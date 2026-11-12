@@ -67,6 +67,13 @@ const SCHEMA = [
     KEY idx_messages_assignment (assignment_id),
     CONSTRAINT fk_messages_assignment FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE
   ) CHARACTER SET utf8mb4`,
+
+  // Instellingen uit het beheer (afzender en mailteksten, als JSON onder de naam 'mail')
+  `CREATE TABLE IF NOT EXISTS app_settings (
+    name       VARCHAR(64) PRIMARY KEY,
+    value      MEDIUMTEXT NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) CHARACTER SET utf8mb4`,
 ]
 
 // Idempotente aanpassingen voor bestaande installaties (MariaDB ondersteunt IF NOT EXISTS)

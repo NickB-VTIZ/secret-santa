@@ -8,18 +8,21 @@ function createMailer({ getConfig, fetchImpl = (...a) => fetch(...a) }) {
     appUrl: () => (cfg().appUrl || '').replace(/\/+$/, ''),
     configured: () => !!cfg().resendApiKey,
 
-    // Gooit nooit: een mailfout mag de actie die mailt niet breken
-    async send({ to, subject, html, text }) {
-      const { resendApiKey, from } = cfg()
+    // Gooit nooit: een mailfout mag de actie die mailt niet breken.
+    // from en replyTo (uit het beheer) gaan voor op de standaardafzender uit de omgeving.
+    async send({ to, subject, html, text, from, replyTo }) {
+      const { resendApiKey, from: defaultFrom } = cfg()
       if (!resendApiKey) {
         console.warn(`[Mail] niet geconfigureerd — "${subject}" niet verstuurd naar ${to}`)
         return { ok: false, skipped: true }
       }
       try {
+        const payload = { from: from || defaultFrom, to: [to], subject, html, text }
+        if (replyTo) payload.reply_to = replyTo
         const r = await fetchImpl(RESEND_URL, {
           method: 'POST',
           headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from, to: [to], subject, html, text }),
+          body: JSON.stringify(payload),
         })
         if (!r.ok) throw new Error(`Resend ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`)
         return { ok: true }

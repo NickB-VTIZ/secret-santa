@@ -1,6 +1,7 @@
 # Taken — secret-santa
 
 ## Open
+- [ ] Mailinstellingen (v1.2.0) uitproberen op de NAS: opslaan, voorbeeld, testmail, afzender `santa.vtiz.be`.
 - [ ] Zelfinschrijving (v1.1.0) testen op een echte MariaDB: migratie, inschrijven, dubbele inschrijving, sluiten, link vernieuwen.
 - [ ] Cloudflare: `santa.nbotech.net` en `santa.vtiz.be` laten wijzen naar de tunnel (zie README, hoofdstuk Publieke adressen) en `APP_URL` aanpassen.
 - [ ] Testen met echte mails (Resend-domein `nbotech.net`) en een kleine testgroep.
@@ -14,3 +15,4 @@
 - [x] Docker/GHCR/workflow en registratie in het app-dashboard.
 - [x] GitHub-repo, release v1.0.0 en eerste deploy op de NAS.
 - [x] Zelfinschrijving via publieke link (v1.1.0), 68 unit tests.
+- [x] Configureerbare mailteksten en afzender in het beheer (v1.2.0), 89 unit tests.

@@ -5,7 +5,8 @@ Secret Santa-app voor het personeel van VTI Zandhoven.
 - **Organisator (admin)** meldt aan met e-mail + wachtwoord, maakt events, voegt deelnemers toe (manueel of CSV/plakken), stelt uitsluitingen in en voert de trekking uit. De admin ziet de koppels niet.
 - **Zelfinschrijving**: de admin opent per event één publieke inschrijflink (`/inschrijven/<code>`). Leerkrachten geven naam en e-mailadres op en vinken aan dat ze akkoord gaan en meedoen. Pas na die toestemming worden ze deelnemer en krijgen ze een bevestigingsmail met hun persoonlijke link. Inschrijven kan tot de trekking of tot de admin de inschrijvingen sluit; de link kan vernieuwd worden.
 - **Deelnemers** krijgen een unieke link per mail (`/deelnemer/<token>`) en kunnen daar hun verlanglijstje invullen, zien wie ze getrokken hebben + diens lijstje, en anoniem berichten sturen naar hun trekking en hun Secret Santa.
-- **Mails** (via Resend): uitnodiging, trekkingsmelding, herinnering (gepland of manueel) en melding bij een nieuw bericht (zonder inhoud).
+- **Mails** (via Resend): uitnodiging, bevestiging van inschrijving, trekkingsmelding, herinnering (gepland of manueel) en melding bij een nieuw bericht (zonder inhoud).
+- **Mailinstellingen** (knop "Mailinstellingen" in het beheer): de admin past de afzender (naam, e-mailadres, antwoordadres) en de teksten van elke mailsoort aan, met live voorbeeld, variabelen (`{{naam}}`, `{{event}}`, `{{datum}}`, `{{budget}}`, `{{link}}`, en `{{wie}}` bij de berichtmelding), "Standaard herstellen" per veld en een testmail naar jezelf.
 
 ## Tech
 
@@ -44,6 +45,10 @@ Meld aan met `nick.bogaerts@vtiz.be` en kies meteen een eigen wachtwoord.
 | `SIGNUP_ALLOWED_DOMAINS` | Optioneel: beperk zelfinschrijving tot deze e-maildomeinen (bv. `vtiz.be`). Leeg = geen beperking |
 
 > De links in de mails moeten bereikbaar zijn voor het personeel. Gebruik een `APP_URL` die ook buiten de server werkt.
+
+### Afzender van de mails
+
+De afzender stel je in via **Beheer → Mailinstellingen**. Wat daar leeg blijft, valt terug op `MAIL_FROM` uit `.env` (standaard `VTIZ Secret Santa <status@nbotech.net>`). Het domein van het afzenderadres moet in Resend geverifieerd zijn (bv. `santa.vtiz.be`), anders weigert Resend de mails. De instellingen staan in de tabel `app_settings` en gelden meteen, zonder herstart.
 
 ## Publieke adressen (Cloudflare)
 

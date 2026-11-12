@@ -8,6 +8,7 @@ const db = require('./db')
 const auth = require('./auth')
 const { createMailer } = require('./mail')
 const templates = require('./mail-templates')
+const mailSettings = require('./mail-settings')
 const { drawPairs, validatePairs } = require('./draw')
 const tokens = require('./tokens')
 const v = require('./validate')
@@ -18,13 +19,32 @@ const MAX_MESSAGES_PER_THREAD = 100
 const MAX_PARTICIPANTS_PER_EVENT = 500
 
 // ── Configuratie ───────────────────────────────────────────────────
+const DEFAULT_FROM = process.env.MAIL_FROM || 'VTIZ Secret Santa <status@nbotech.net>'
+
 const mailer = createMailer({
   getConfig: () => ({
     resendApiKey: process.env.RESEND_API_KEY,
-    from: process.env.MAIL_FROM || 'VTIZ Secret Santa <status@nbotech.net>',
+    from: DEFAULT_FROM,
     appUrl: process.env.APP_URL,
   }),
 })
+
+// Mailinstellingen uit het beheer (afzender + eigen teksten), in het geheugen bewaard
+let mailSettingsCache = null
+
+async function getMailSettings() {
+  if (!mailSettingsCache) {
+    const row = await db.one("SELECT value FROM app_settings WHERE name = 'mail'")
+    mailSettingsCache = mailSettings.parseStored(row?.value)
+  }
+  return mailSettingsCache
+}
+
+/** Voegt afzender en antwoordadres uit het beheer toe aan een mail. */
+function withSender(message, settings) {
+  const { from, replyTo } = mailSettings.resolveSender(settings, DEFAULT_FROM)
+  return { ...message, ...(from ? { from } : {}), ...(replyTo ? { replyTo } : {}) }
+}
 
 const idParam = value => {
   const n = Number(value)
@@ -85,15 +105,15 @@ const participantDto = p => ({
 })
 
 // ── Mails opbouwen ─────────────────────────────────────────────────
-function buildMails(kind, event, participants, baseUrl, extra = {}) {
+function buildMails(kind, event, participants, baseUrl, settings = {}, extra = {}) {
   return participants.map(p => {
     const link = tokens.participantLink(baseUrl, p.token)
-    const ctx = { participant: p, event, link }
+    const ctx = { participant: p, event, link, custom: settings.templates?.[kind] }
     let message
     if (kind === 'invite') message = templates.invite(ctx)
     else if (kind === 'drawn') message = templates.drawn(ctx)
     else message = templates.reminder({ ...ctx, isDrawn: !!event.drawn_at, hasWishlist: !!(p.wishlist && p.wishlist.trim()), ...extra })
-    return { participantId: p.id, message: { to: p.email, ...message } }
+    return { participantId: p.id, message: withSender({ to: p.email, ...message }, settings) }
   })
 }
 
@@ -375,7 +395,7 @@ function createApp() {
     }
     if (!participants.length) return res.status(400).json({ error: 'Er zijn geen deelnemers om uit te nodigen.' })
 
-    const job = startMailJob(event.id, 'invite', buildMails('invite', event, participants, baseUrl(req)))
+    const job = startMailJob(event.id, 'invite', buildMails('invite', event, participants, baseUrl(req), await getMailSettings()))
     res.json({ ok: true, total: job.total })
   }))
 
@@ -413,7 +433,7 @@ function createApp() {
     if (result.error) return res.status(result.status).json({ error: result.error })
 
     // Mails gaan op de achtergrond; de koppels zelf worden nergens aan de admin getoond
-    startMailJob(id, 'drawn', buildMails('drawn', result.event, result.participants, baseUrl(req)))
+    startMailJob(id, 'drawn', buildMails('drawn', result.event, result.participants, baseUrl(req), await getMailSettings()))
     res.json({ ok: true })
   }))
 
@@ -439,8 +459,62 @@ function createApp() {
     const participants = await db.query('SELECT * FROM participants WHERE event_id = ?', [event.id])
     if (!participants.length) return res.status(400).json({ error: 'Er zijn geen deelnemers.' })
 
-    const job = startMailJob(event.id, 'reminder', buildMails('reminder', event, participants, baseUrl(req)))
+    const job = startMailJob(event.id, 'reminder', buildMails('reminder', event, participants, baseUrl(req), await getMailSettings()))
     res.json({ ok: true, total: job.total })
+  }))
+
+  // ════════════════════ Admin: mailinstellingen ════════════════════
+  // Afzender, antwoordadres en teksten per soort mail
+  app.get('/api/admin/mail-settings', admin, h(async (req, res) => {
+    const stored = await getMailSettings()
+    const env = mailSettings.parseAddress(DEFAULT_FROM)
+    res.json({
+      fromName: stored.fromName,
+      fromEmail: stored.fromEmail,
+      replyTo: stored.replyTo,
+      templates: stored.templates,
+      defaults: { fromName: env.name, fromEmail: env.email },
+      kinds: templates.describeKinds(),
+      mailConfigured: mailer.configured(),
+    })
+  }))
+
+  app.put('/api/admin/mail-settings', admin, h(async (req, res) => {
+    const { value, error } = mailSettings.cleanMailSettingsInput(req.body)
+    if (error) return res.status(400).json({ error })
+    await db.query(
+      "INSERT INTO app_settings (name, value) VALUES ('mail', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
+      [JSON.stringify(value)])
+    mailSettingsCache = mailSettings.parseStored(JSON.stringify(value))
+    res.json({ ok: true })
+  }))
+
+  // Voorbeeld van een mail met de (nog niet bewaarde) teksten uit het formulier
+  app.post('/api/admin/mail-settings/preview', admin, h(async (req, res) => {
+    const { value, error } = mailSettings.cleanMailSettingsInput(req.body)
+    if (error) return res.status(400).json({ error })
+    const kind = String(req.body?.kind || '')
+    const sample = templates.renderSample(kind, value.templates[kind], req.body?.variant)
+    if (!sample) return res.status(400).json({ error: 'Onbekend soort mail.' })
+    res.json({ subject: sample.subject, html: sample.html, from: mailSettings.resolveSender(value, DEFAULT_FROM).from || DEFAULT_FROM })
+  }))
+
+  // Testmail naar de aangemelde beheerder, met de instellingen uit het formulier
+  app.post('/api/admin/mail-settings/test', admin, h(async (req, res) => {
+    const { value, error } = mailSettings.cleanMailSettingsInput(req.body)
+    if (error) return res.status(400).json({ error })
+    if (!mailer.configured()) return res.status(409).json({ error: 'RESEND_API_KEY is niet ingesteld.' })
+
+    const kind = String(req.body?.kind || '')
+    const sample = templates.renderSample(kind, value.templates[kind], req.body?.variant)
+    if (!sample) return res.status(400).json({ error: 'Onbekend soort mail.' })
+
+    const me = await db.one('SELECT email FROM admins WHERE id = ?', [req.admin.sub])
+    if (!me) return res.status(401).json({ error: 'Niet aangemeld' })
+
+    const r = await mailer.send(withSender({ to: me.email, ...sample, subject: `[Test] ${sample.subject}` }, value))
+    if (!r.ok) return res.status(502).json({ error: `Verzenden mislukt: ${r.error || 'onbekende fout'}` })
+    res.json({ ok: true, to: me.email })
   }))
 
   // ════════════════════ Openbaar: zelf inschrijven via de gedeelde link ════════════════════
@@ -506,7 +580,9 @@ function createApp() {
     // Altijd hetzelfde antwoord: zo lekt de pagina niet wie al deelneemt.
     // Wie zich opnieuw inschrijft, krijgt gewoon zijn persoonlijke link nog eens.
     const link = tokens.participantLink(baseUrl(req), result.participant.token)
-    mailer.send({ to: result.participant.email, ...templates.signup({ participant: result.participant, event: result.event, link }) })
+    const settings = await getMailSettings()
+    const message = templates.signup({ participant: result.participant, event: result.event, link, custom: settings.templates?.signup })
+    mailer.send(withSender({ to: result.participant.email, ...message }, settings))
       .then(async r => {
         if (r.ok && result.isNew) {
           await db.query('UPDATE participants SET invited_at = ? WHERE event_id = ? AND email = ?',
@@ -612,7 +688,9 @@ function createApp() {
     if (other) {
       const link = tokens.participantLink(baseUrl(req), other.token)
       const event = { name: me.event_name }
-      mailer.send({ to: other.email, ...templates.messageNotice({ participant: other, event, link, fromRole: senderRole }) }).catch(() => {})
+      const settings = await getMailSettings()
+      const message = templates.messageNotice({ participant: other, event, link, fromRole: senderRole, custom: settings.templates?.messageNotice })
+      mailer.send(withSender({ to: other.email, ...message }, settings)).catch(() => {})
     }
     res.status(201).json({ ok: true })
   }))
@@ -668,7 +746,7 @@ async function runDueReminders() {
 
     const participants = await db.query('SELECT * FROM participants WHERE event_id = ?', [event.id])
     console.log(`[Herinnering] "${event.name}": ${participants.length} mails`)
-    startMailJob(event.id, 'reminder', buildMails('reminder', event, participants, mailer.appUrl()))
+    startMailJob(event.id, 'reminder', buildMails('reminder', event, participants, mailer.appUrl(), await getMailSettings()))
   }
 }
 

@@ -5,6 +5,7 @@ import Login from './Login.jsx'
 import ChangePassword from './ChangePassword.jsx'
 import Events from './Events.jsx'
 import EventDetail from './EventDetail.jsx'
+import MailSettings from './MailSettings.jsx'
 
 export default function AdminApp() {
   const [state, setState] = useState(getToken() ? 'loading' : 'out')
@@ -49,6 +50,7 @@ export default function AdminApp() {
         <Link to="/" className="brand">🎅 VTIZ Secret Santa</Link>
         <nav className="topbar-right">
           <span className="muted hide-mobile">{me?.email}</span>
+          <Link to="/mail" className="btn btn-ghost">Mailinstellingen</Link>
           <button className="btn btn-ghost" onClick={() => setShowPassword(true)}>Wachtwoord</button>
           <button className="btn btn-ghost" onClick={logout}>Afmelden</button>
         </nav>
@@ -63,6 +65,7 @@ export default function AdminApp() {
         <Routes>
           <Route path="/" element={<Events />} />
           <Route path="events/:id" element={<EventDetail />} />
+          <Route path="mail" element={<MailSettings />} />
           <Route path="*" element={<div className="card">Pagina niet gevonden. <Link to="/">Terug naar de events</Link></div>} />
         </Routes>
       </main>

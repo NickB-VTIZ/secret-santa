@@ -201,6 +201,29 @@ td.actions .btn { margin-left: 4px; }
 .toast-ok { background: var(--green); }
 .toast-error { background: var(--red); }
 
+/* ── Mailinstellingen ── */
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.tab {
+  font: inherit; cursor: pointer; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: #fff; color: var(--text);
+}
+.tab:hover { border-color: var(--gold); }
+.tab-active { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; }
+.mail-editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-weight: 600; }
+.placeholders { margin-top: 4px; gap: 6px; }
+.placeholders .btn { font-family: monospace; }
+.btn-link { align-self: flex-start; background: none; border: none; color: var(--red); padding: 0; text-decoration: underline; cursor: pointer; }
+.preview-box { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #fff; }
+.preview-subject { display: flex; flex-direction: column; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.preview-frame { width: 100%; height: 480px; border: 0; display: block; background: #fff; }
+.save-bar { position: sticky; bottom: 0; background: var(--bg); padding: 10px 0; }
+
+@media (max-width: 900px) {
+  .mail-editor { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 640px) {
   .grid-3 { grid-template-columns: 1fr; }
   .hide-mobile { display: none; }
