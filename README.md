@@ -3,6 +3,7 @@
 Secret Santa-app voor het personeel van VTI Zandhoven.
 
 - **Organisator (admin)** meldt aan met e-mail + wachtwoord, maakt events, voegt deelnemers toe (manueel of CSV/plakken), stelt uitsluitingen in en voert de trekking uit. De admin ziet de koppels niet.
+- **Zelfinschrijving**: de admin opent per event één publieke inschrijflink (`/inschrijven/<code>`). Leerkrachten geven naam en e-mailadres op en vinken aan dat ze akkoord gaan en meedoen. Pas na die toestemming worden ze deelnemer en krijgen ze een bevestigingsmail met hun persoonlijke link. Inschrijven kan tot de trekking of tot de admin de inschrijvingen sluit; de link kan vernieuwd worden.
 - **Deelnemers** krijgen een unieke link per mail (`/deelnemer/<token>`) en kunnen daar hun verlanglijstje invullen, zien wie ze getrokken hebben + diens lijstje, en anoniem berichten sturen naar hun trekking en hun Secret Santa.
 - **Mails** (via Resend): uitnodiging, trekkingsmelding, herinnering (gepland of manueel) en melding bij een nieuw bericht (zonder inhoud).
 
@@ -39,9 +40,16 @@ Meld aan met `nick.bogaerts@vtiz.be` en kies meteen een eigen wachtwoord.
 | `JWT_SECRET` | Ondertekening admin-sessies (min. 16 tekens) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Eerste admin (alleen gebruikt als er nog geen admin bestaat) |
 | `RESEND_API_KEY`, `MAIL_FROM` | Mailverzending |
-| `APP_URL` | Basis-URL voor de links in mails (bv. `http://10.18.0.1:3004`) |
+| `APP_URL` | Basis-URL voor de links in mails en de inschrijflink (bv. `http://10.18.0.1:3004`) |
+| `SIGNUP_ALLOWED_DOMAINS` | Optioneel: beperk zelfinschrijving tot deze e-maildomeinen (bv. `vtiz.be`). Leeg = geen beperking |
 
 > De links in de mails moeten bereikbaar zijn voor het personeel. Gebruik een `APP_URL` die ook buiten de server werkt.
+
+## Publieke adressen (Cloudflare)
+
+De app is bedoeld bereikbaar op `https://santa.nbotech.net` en `https://santa.vtiz.be`. In het app-dashboard staat daarvoor `cloudflare.hostname` (`santa.nbotech.net`) en `cloudflare.extraHostnames` (`santa.vtiz.be`) in `apps.config.json`; "Tunnel synchroniseren" maakt de ingress-regels en de DNS-records aan voor zones in dezelfde Cloudflare-account. Staat `vtiz.be` ergens anders, maak dan zelf een CNAME `santa` naar `<tunnel-id>.cfargotunnel.com` en voeg de hostnaam toe aan de tunnel.
+
+Zet daarna in `.env` `APP_URL=https://santa.vtiz.be` (de link in mails en de inschrijflink gebruiken dit adres) en herstart met `docker compose up -d`.
 
 ## Lokaal ontwikkelen
 
@@ -70,3 +78,4 @@ Lokaal bouwen i.p.v. het GHCR-image: `docker compose -f docker-compose.yml -f do
 - Tokens zijn willekeurig en 32 tekens lang; een ongeldige link geeft altijd dezelfde foutmelding.
 - Meldingsmails over berichten bevatten geen inhoud en geen afzender.
 - Een nieuwe trekking wist alle koppels en berichten.
+- Zelfinschrijving vereist een expliciet aangevinkt akkoord; het tijdstip wordt bewaard. Wie zich dubbel inschrijft, krijgt dezelfde neutrale melding en opnieuw zijn eigen link, zodat niet zichtbaar is wie al meedoet.

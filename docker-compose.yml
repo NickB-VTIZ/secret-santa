@@ -24,6 +24,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MAIL_FROM:      ${MAIL_FROM:-VTIZ Secret Santa <status@nbotech.net>}
       APP_URL:        ${APP_URL:-}
+      SIGNUP_ALLOWED_DOMAINS: ${SIGNUP_ALLOWED_DOMAINS:-}
     depends_on:
       mariadb:
         condition: service_healthy

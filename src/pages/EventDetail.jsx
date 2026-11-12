@@ -51,7 +51,7 @@ export default function EventDetail() {
   if (notFound) return <div className="card">Event niet gevonden. <Link to="/">Terug naar de events</Link></div>
   if (!data) return <div className="muted">Laden…</div>
 
-  const { event, participants, exclusions, mailing, mailConfigured } = data
+  const { event, signup, participants, exclusions, mailing, mailConfigured } = data
   const drawn = !!event.drawnAt
   const byId = Object.fromEntries(participants.map(p => [p.id, p]))
   const notInvited = participants.filter(p => !p.invitedAt).length
@@ -183,6 +183,9 @@ export default function EventDetail() {
         </p>
       </section>
 
+      {/* ── Openbare inschrijflink ── */}
+      <SignupLink eventId={id} signup={signup} drawn={drawn} act={act} toast={toast} />
+
       {/* ── Deelnemers ── */}
       <Participants
         eventId={id}
@@ -198,6 +201,66 @@ export default function EventDetail() {
       {/* ── Uitsluitingen ── */}
       <Exclusions eventId={id} participants={participants} exclusions={exclusions} byId={byId} drawn={drawn} act={act} />
     </div>
+  )
+}
+
+// ════════════════════ Openbare inschrijflink ════════════════════
+function SignupLink({ eventId, signup, drawn, act, toast }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(signup.link)
+      toast('Link gekopieerd')
+    } catch {
+      toast('Kopiëren mislukt: selecteer de link en kopieer ze handmatig.', 'error')
+    }
+  }
+
+  const setOpen = open => act(
+    () => admin.put(`/api/admin/events/${eventId}/signup`, { open }),
+    open ? 'Inschrijvingen geopend' : 'Inschrijvingen gesloten',
+  )
+
+  const renew = () => {
+    if (!window.confirm('Een nieuwe link maken? De huidige link werkt dan niet meer. Wie al ingeschreven is, blijft staan.')) return
+    act(() => admin.post(`/api/admin/events/${eventId}/signup/renew`), 'Nieuwe link gemaakt')
+  }
+
+  return (
+    <section className="card stack">
+      <div className="row row-between">
+        <h2>Inschrijflink</h2>
+        {signup.hasLink && (
+          <span className={`badge ${signup.open && !drawn ? 'badge-ok' : 'badge-wait'}`}>
+            {drawn ? 'Gesloten (getrokken)' : signup.open ? 'Open' : 'Gesloten'}
+          </span>
+        )}
+      </div>
+
+      <p className="muted small">
+        Eén link voor alle leerkrachten. Ze geven hun naam en e-mailadres op en vinken aan dat ze akkoord gaan en willen meedoen.
+        Pas dan komen ze bij de deelnemers en krijgen ze hun persoonlijke link per mail.
+      </p>
+
+      {!signup.hasLink ? (
+        <div className="row">
+          <button className="btn btn-primary" disabled={drawn} onClick={() => setOpen(true)}>Inschrijvingen openen</button>
+          {drawn && <span className="muted small">Na de trekking kan er niet meer ingeschreven worden.</span>}
+        </div>
+      ) : (
+        <>
+          <div className="link-box">
+            <input readOnly value={signup.link} onFocus={e => e.target.select()} aria-label="Inschrijflink" />
+            <button className="btn" onClick={copy}>📋 Kopieer</button>
+          </div>
+          <div className="row wrap">
+            {signup.open && !drawn
+              ? <button className="btn" onClick={() => setOpen(false)}>Inschrijvingen sluiten</button>
+              : <button className="btn btn-primary" disabled={drawn} onClick={() => setOpen(true)}>Inschrijvingen openen</button>}
+            <button className="btn btn-danger-ghost" onClick={renew}>Nieuwe link maken</button>
+          </div>
+        </>
+      )}
+    </section>
   )
 }
 

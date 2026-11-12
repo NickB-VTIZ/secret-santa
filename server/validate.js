@@ -1,4 +1,6 @@
 // ── Invoervalidatie: pure helpers ──────────────────────────────────
+const { normalizeEmail, isValidEmail } = require('./tokens')
+
 const LIMITS = { eventName: 150, description: 2000, wishlist: 2000, message: 1000, name: 150 }
 const MIN_PARTICIPANTS_TO_DRAW = 3
 
@@ -78,6 +80,39 @@ function cleanWishlist(body) {
   return cleanText(body, LIMITS.wishlist) || null
 }
 
+/** "vtiz.be, @school.be" → ['vtiz.be', 'school.be']; leeg = geen beperking. */
+function parseAllowedDomains(value) {
+  return String(value || '')
+    .split(/[,;\s]+/)
+    .map(d => d.trim().toLowerCase().replace(/^@/, ''))
+    .filter(Boolean)
+}
+
+/** Valideert het inschrijfformulier: naam, geldig e-mailadres en uitdrukkelijke toestemming. */
+function cleanSignupInput(body = {}, { allowedDomains = [] } = {}) {
+  const name = cleanText(body.name, LIMITS.name).replace(/\s+/g, ' ')
+  if (!name) return { error: 'Geef je naam op.' }
+
+  const email = normalizeEmail(body.email)
+  if (!isValidEmail(email)) return { error: 'Geef een geldig e-mailadres op.' }
+  if (email.length > 190) return { error: 'Dit e-mailadres is te lang.' }
+
+  if (allowedDomains.length && !allowedDomains.includes(email.split('@').pop())) {
+    return { error: `Gebruik je schooladres (${allowedDomains.map(d => '@' + d).join(', ')}).` }
+  }
+
+  if (body.consent !== true) return { error: 'Vink aan dat je akkoord gaat en wil meedoen.' }
+
+  return { value: { name, email } }
+}
+
+/** Kan er nu ingeschreven worden? Geeft een foutmelding of null. */
+function signupBlocker({ open, drawn }) {
+  if (drawn) return 'De trekking is al gedaan. Inschrijven is niet meer mogelijk.'
+  if (!open) return 'De inschrijvingen voor dit event zijn gesloten.'
+  return null
+}
+
 /** Mag er getrokken worden? Geeft een foutmelding of null. */
 function drawBlocker({ participantCount, drawn }) {
   if (drawn) return 'De trekking is al gedaan. Herstel ze eerst als je opnieuw wil trekken.'
@@ -91,4 +126,5 @@ module.exports = {
   LIMITS, MIN_PARTICIPANTS_TO_DRAW,
   formatLocalDateTime, parseDate, parseDateTime, parseBudget,
   cleanText, cleanEventInput, cleanMessage, cleanWishlist, drawBlocker,
+  parseAllowedDomains, cleanSignupInput, signupBlocker,
 }

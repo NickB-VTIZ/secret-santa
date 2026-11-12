@@ -15,6 +15,7 @@ const v = require('./validate')
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 const MAIL_DELAY_MS = 600           // Resend: max 2 mails per seconde
 const MAX_MESSAGES_PER_THREAD = 100
+const MAX_PARTICIPANTS_PER_EVENT = 500
 
 // ── Configuratie ───────────────────────────────────────────────────
 const mailer = createMailer({
@@ -70,6 +71,7 @@ const eventDto = e => ({
   reminderAt: e.reminder_at ? e.reminder_at.slice(0, 16).replace(' ', 'T') : null,
   reminderSentAt: e.reminder_sent_at,
   drawnAt: e.drawn_at,
+  signupOpen: !!e.signup_open && !!e.signup_code,
 })
 
 // De admin ziet bewust géén tokens, wishlists of koppels: de trekking blijft geheim
@@ -104,6 +106,8 @@ function createApp() {
 
   const loginLimiter = auth.createRateLimiter({ max: 10, windowMs: 15 * 60 * 1000 })
   const publicLimiter = auth.createRateLimiter({ max: 120, windowMs: 60 * 1000 })
+  // Ruim genoeg voor een heel schoolnetwerk achter één IP, krap genoeg tegen spam
+  const signupLimiter = auth.createRateLimiter({ max: 60, windowMs: 15 * 60 * 1000 })
 
   app.set('trust proxy', 'loopback, linklocal, uniquelocal')
   app.disable('x-powered-by')
@@ -188,6 +192,11 @@ function createApp() {
 
     res.json({
       event: eventDto(event),
+      signup: {
+        open: !!event.signup_open && !!event.signup_code,
+        hasLink: !!event.signup_code,
+        link: event.signup_code ? tokens.signupLink(baseUrl(req), event.signup_code) : null,
+      },
       participants: participants.map(participantDto),
       exclusions: exclusions.map(x => ({ id: x.id, aId: x.a_id, bId: x.b_id })),
       mailing: job ? { kind: job.kind, running: job.running, total: job.total, sent: job.sent, failed: job.failed, skipped: job.skipped } : null,
@@ -228,6 +237,41 @@ function createApp() {
     if (!event) { res.status(404).json({ error: 'Event niet gevonden' }); return null }
     return event
   }
+
+  // Unieke code voor de openbare inschrijflink (opnieuw proberen bij een botsing)
+  async function assignSignupCode(eventId, { open }) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await db.query('UPDATE events SET signup_code = ?, signup_open = ? WHERE id = ?', [tokens.generateSignupCode(), open ? 1 : 0, eventId])
+        return
+      } catch (e) {
+        if (e.code !== 'ER_DUP_ENTRY') throw e
+      }
+    }
+    throw new Error('Geen unieke inschrijfcode gevonden')
+  }
+
+  // ════════════════════ Admin: openbare inschrijflink ════════════════════
+  // Link aan/uit zetten; de eerste keer wordt de code aangemaakt
+  app.put('/api/admin/events/:id/signup', admin, h(async (req, res) => {
+    const event = await loadEvent(req, res)
+    if (!event) return
+    const open = req.body?.open === true
+
+    if (open && event.drawn_at) return res.status(409).json({ error: 'De trekking is al gedaan. Inschrijven is niet meer mogelijk.' })
+
+    if (!event.signup_code) await assignSignupCode(event.id, { open })
+    else await db.query('UPDATE events SET signup_open = ? WHERE id = ?', [open ? 1 : 0, event.id])
+    res.json({ ok: true })
+  }))
+
+  // Nieuwe link: de oude werkt meteen niet meer (bv. als hij ongewenst gedeeld werd)
+  app.post('/api/admin/events/:id/signup/renew', admin, h(async (req, res) => {
+    const event = await loadEvent(req, res)
+    if (!event) return
+    await assignSignupCode(event.id, { open: !!event.signup_open && !event.drawn_at })
+    res.json({ ok: true })
+  }))
 
   app.post('/api/admin/events/:id/participants', admin, h(async (req, res) => {
     const event = await loadEvent(req, res)
@@ -397,6 +441,81 @@ function createApp() {
 
     const job = startMailJob(event.id, 'reminder', buildMails('reminder', event, participants, baseUrl(req)))
     res.json({ ok: true, total: job.total })
+  }))
+
+  // ════════════════════ Openbaar: zelf inschrijven via de gedeelde link ════════════════════
+  async function eventFromSignupCode(req, res) {
+    if (!publicLimiter(req.ip)) { res.status(429).json({ error: 'Te veel aanvragen. Probeer zo meteen opnieuw.' }); return null }
+    const code = req.params.code
+    // Altijd dezelfde 404, zodat niemand codes kan aftasten
+    if (!tokens.isValidSignupCode(code)) { res.status(404).json({ error: 'Deze link is niet geldig.' }); return null }
+    const event = await db.one('SELECT * FROM events WHERE signup_code = ?', [code])
+    if (!event) { res.status(404).json({ error: 'Deze link is niet geldig.' }); return null }
+    return event
+  }
+
+  app.get('/api/signup/:code', h(async (req, res) => {
+    const event = await eventFromSignupCode(req, res)
+    if (!event) return
+    const blocker = v.signupBlocker({ open: !!event.signup_open, drawn: !!event.drawn_at })
+    res.json({
+      event: {
+        name: event.name,
+        description: event.description,
+        budget: event.budget === null ? null : Number(event.budget),
+        eventDate: event.event_date,
+      },
+      open: !blocker,
+      closedReason: blocker,
+    })
+  }))
+
+  app.post('/api/signup/:code', h(async (req, res) => {
+    const event = await eventFromSignupCode(req, res)
+    if (!event) return
+    if (!signupLimiter(req.ip)) return res.status(429).json({ error: 'Te veel pogingen. Probeer het over een kwartier opnieuw.' })
+
+    // Verborgen veld dat alleen bots invullen: stil "gelukt" antwoorden zonder iets op te slaan
+    if (req.body?.website) return res.status(201).json({ ok: true })
+
+    const { value, error } = v.cleanSignupInput(req.body, { allowedDomains: v.parseAllowedDomains(process.env.SIGNUP_ALLOWED_DOMAINS) })
+    if (error) return res.status(400).json({ error })
+
+    // Zelfde slot als de trekking, zodat niemand nog binnenglipt tijdens het trekken
+    const result = await db.transaction(async tx => {
+      const [fresh] = await tx.query('SELECT * FROM events WHERE id = ? FOR UPDATE', [event.id])
+      const blocker = fresh && v.signupBlocker({ open: !!fresh.signup_open && fresh.signup_code === event.signup_code, drawn: !!fresh.drawn_at })
+      if (!fresh) return { status: 404, error: 'Deze link is niet geldig.' }
+      if (blocker) return { status: 409, error: blocker }
+
+      const [existing] = await tx.query('SELECT * FROM participants WHERE event_id = ? AND email = ?', [event.id, value.email])
+      if (existing) return { participant: existing, isNew: false, event: fresh }
+
+      const [{ n }] = await tx.query('SELECT COUNT(*) AS n FROM participants WHERE event_id = ?', [event.id])
+      if (Number(n) >= MAX_PARTICIPANTS_PER_EVENT) return { status: 409, error: 'Het maximum aantal deelnemers is bereikt.' }
+
+      const now = v.formatLocalDateTime(new Date())
+      const token = tokens.generateToken()
+      await tx.query('INSERT INTO participants (event_id, name, email, token, consented_at) VALUES (?, ?, ?, ?, ?)',
+        [event.id, value.name, value.email, token, now])
+      return { participant: { name: value.name, email: value.email, token }, isNew: true, event: fresh }
+    })
+
+    if (result.error) return res.status(result.status).json({ error: result.error })
+
+    // Altijd hetzelfde antwoord: zo lekt de pagina niet wie al deelneemt.
+    // Wie zich opnieuw inschrijft, krijgt gewoon zijn persoonlijke link nog eens.
+    const link = tokens.participantLink(baseUrl(req), result.participant.token)
+    mailer.send({ to: result.participant.email, ...templates.signup({ participant: result.participant, event: result.event, link }) })
+      .then(async r => {
+        if (r.ok && result.isNew) {
+          await db.query('UPDATE participants SET invited_at = ? WHERE event_id = ? AND email = ?',
+            [v.formatLocalDateTime(new Date()), event.id, result.participant.email])
+        }
+      })
+      .catch(() => {})
+
+    res.status(201).json({ ok: true, mailSent: mailer.configured() })
   }))
 
   // ════════════════════ Deelnemer: persoonlijke pagina (via token) ════════════════════

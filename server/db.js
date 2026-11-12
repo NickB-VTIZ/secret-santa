@@ -69,6 +69,16 @@ const SCHEMA = [
   ) CHARACTER SET utf8mb4`,
 ]
 
+// Idempotente aanpassingen voor bestaande installaties (MariaDB ondersteunt IF NOT EXISTS)
+const MIGRATIONS = [
+  // Openbare inschrijflink per event
+  'ALTER TABLE events ADD COLUMN IF NOT EXISTS signup_code VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NULL',
+  'ALTER TABLE events ADD COLUMN IF NOT EXISTS signup_open TINYINT(1) NOT NULL DEFAULT 0',
+  'ALTER TABLE events ADD UNIQUE INDEX IF NOT EXISTS uq_events_signup_code (signup_code)',
+  // Moment waarop een deelnemer zich zelf inschreef en akkoord ging
+  'ALTER TABLE participants ADD COLUMN IF NOT EXISTS consented_at DATETIME NULL',
+]
+
 function createPool(env = process.env) {
   return mysql.createPool({
     host: env.DB_HOST || 'localhost',
@@ -132,6 +142,7 @@ async function waitForDb({ attempts = 30, delayMs = 2000 } = {}) {
 
 async function migrate() {
   for (const sql of SCHEMA) await pool.query(sql)
+  for (const sql of MIGRATIONS) await pool.query(sql)
 }
 
-module.exports = { pool, query, one, transaction, waitForDb, migrate, SCHEMA }
+module.exports = { pool, query, one, transaction, waitForDb, migrate, SCHEMA, MIGRATIONS }

@@ -25,6 +25,24 @@ function participantLink(appUrl, token) {
   return `${base}/deelnemer/${token}`
 }
 
+// ── Openbare inschrijfcode (één link per event) ────────────────────
+const SIGNUP_CODE_LENGTH = 16
+
+function generateSignupCode(randomBytes = crypto.randomBytes) {
+  return generateToken(SIGNUP_CODE_LENGTH, randomBytes)
+}
+
+function isValidSignupCode(code) {
+  return typeof code === 'string'
+    && code.length === SIGNUP_CODE_LENGTH
+    && [...code].every(c => ALPHABET.includes(c))
+}
+
+function signupLink(appUrl, code) {
+  const base = String(appUrl || '').replace(/\/+$/, '')
+  return `${base}/inschrijven/${code}`
+}
+
 /** Timing-veilige vergelijking, zodat tokens niet te raden zijn via responstijd. */
 function safeEqual(a, b) {
   const x = Buffer.from(String(a))
@@ -101,7 +119,8 @@ function parseParticipants(text) {
 }
 
 module.exports = {
-  ALPHABET, TOKEN_LENGTH,
+  ALPHABET, TOKEN_LENGTH, SIGNUP_CODE_LENGTH,
   generateToken, isValidToken, participantLink, safeEqual,
+  generateSignupCode, isValidSignupCode, signupLink,
   normalizeEmail, isValidEmail, parseParticipants,
 }

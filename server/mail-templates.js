@@ -69,6 +69,26 @@ function invite({ participant, event, link }) {
   }
 }
 
+// Bevestiging na zelf inschrijven via de openbare link
+function signup({ participant, event, link }) {
+  const details = eventDetails(event)
+  return {
+    subject: `Secret Santa ${event.name}: je bent ingeschreven`,
+    html: layout({
+      title: `Ingeschreven — ${event.name}`,
+      intro: `Dag ${esc(participant.name)}, bedankt voor je inschrijving: je doet mee aan Secret Santa. Vul via je persoonlijke pagina je verlanglijstje in. Na de trekking zie je daar ook voor wie je een cadeau koopt.`,
+      link, linkLabel: 'Open mijn pagina', details,
+    }),
+    text: textBody([
+      `Dag ${participant.name},`, '',
+      `Bedankt voor je inschrijving: je doet mee aan Secret Santa "${event.name}".`,
+      ...details.filter(Boolean), '',
+      `Je persoonlijke pagina: ${link}`, '',
+      'Deel deze link met niemand.',
+    ]),
+  }
+}
+
 function drawn({ participant, event, link }) {
   const details = eventDetails(event)
   return {
@@ -118,4 +138,4 @@ function messageNotice({ participant, event, link, fromRole }) {
   }
 }
 
-module.exports = { esc, formatDate, formatBudget, invite, drawn, reminder, messageNotice }
+module.exports = { esc, formatDate, formatBudget, invite, signup, drawn, reminder, messageNotice }

@@ -18,6 +18,7 @@
 - Berichtmeldingen per mail bevatten nooit de inhoud of de afzender.
 - API-antwoorden zijn `Cache-Control: no-store`; `Referrer-Policy: no-referrer` voorkomt lekken van de token-URL.
 - Trekking = derangement met (wederzijdse) uitsluitingen, gebeurt in één transactie met `FOR UPDATE`.
+- Zelfinschrijving (`/inschrijven/:code`): deelnemer wordt enkel toegevoegd bij `consent === true`; een dubbele inschrijving geeft hetzelfde neutrale antwoord (geen lek van wie meedoet); na de trekking is inschrijven geblokkeerd.
 
 ## Versiebeheer & deploy
 - Release: verhoog `version` in `package.json` (`npm version patch`) en push naar `main`. De workflow `.github/workflows/release-image.yml` bouwt het image, pusht naar GHCR en maakt de GitHub Release `vX.Y.Z`.

@@ -107,6 +107,17 @@ input, textarea, select {
 input:focus, textarea:focus, select:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
 textarea { resize: vertical; }
 
+/* Toestemming: checkbox naast de tekst in plaats van gestapeld */
+label.consent { flex-direction: row; align-items: flex-start; gap: 10px; font-weight: 400; line-height: 1.4; cursor: pointer; }
+label.consent input[type='checkbox'] { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 2px; accent-color: var(--red); }
+
+/* Lokaas voor bots: buiten beeld, maar niet display:none (anders slaan bots het over) */
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* Inschrijflink in het adminpaneel */
+.link-box { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.link-box input { flex: 1 1 260px; width: auto; font-family: monospace; font-size: 0.85rem; }
+
 .inline-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .inline-form input, .inline-form select { flex: 1 1 180px; width: auto; }
 

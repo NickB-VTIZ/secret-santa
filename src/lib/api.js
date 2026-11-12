@@ -50,6 +50,7 @@ export const admin = {
 }
 
 export const publicApi = {
+  get: url => request('GET', url),
   post: (url, body = {}) => request('POST', url, body),
 }
 
