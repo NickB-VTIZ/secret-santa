@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-ssr
+*.local
+logs
+*.log
+
+.env
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+# Local MCP secrets
+/.roo/mcp.json

@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+
+  # ── App: React frontend + Node.js API ──────────────────────────────
+  app:
+    image: ghcr.io/nickb-vtiz/secret-santa:${APP_VERSION:-latest}
+    container_name: secret-santa
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3004}:3000"
+    environment:
+      NODE_ENV:       production
+      PORT:           3000
+      TZ:             Europe/Brussels
+      DB_HOST:        mariadb
+      DB_PORT:        3306
+      DB_USER:        ${DB_USER}
+      DB_PASSWORD:    ${DB_PASSWORD}
+      DB_NAME:        ${DB_NAME}
+      JWT_SECRET:     ${JWT_SECRET}
+      ADMIN_EMAIL:    ${ADMIN_EMAIL:-nick.bogaerts@vtiz.be}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM:      ${MAIL_FROM:-VTIZ Secret Santa <status@nbotech.net>}
+      APP_URL:        ${APP_URL:-}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - secret-santa-net
+
+  # ── MariaDB ────────────────────────────────────────────────────────
+  mariadb:
+    image: mariadb:10.11
+    container_name: secret-santa-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE:      ${DB_NAME}
+      MYSQL_USER:          ${DB_USER}
+      MYSQL_PASSWORD:      ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks:
+      - secret-santa-net
+
+networks:
+  secret-santa-net:
+    name: secret-santa-net
+
+volumes:
+  db_data:
+    name: secret-santa-db-data
