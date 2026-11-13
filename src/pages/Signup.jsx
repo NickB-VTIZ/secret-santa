@@ -72,7 +72,7 @@ export default function Signup() {
             <h2 className="center">Bedankt, je staat op de lijst!</h2>
             <p className="center">
               {done.mailSent
-                ? 'We sturen je zo een mail met je persoonlijke link. Daar vul je later je verlanglijstje in en zie je na de trekking voor wie je een cadeau koopt.'
+                ? 'We sturen je zo een mail met je persoonlijke link. Daar zie je na de trekking voor wie je een cadeau koopt.'
                 : 'Je inschrijving is genoteerd. Je ontvangt later je persoonlijke link van de organisator.'}
             </p>
             <p className="muted small center">Geen mail gekregen? Kijk in je ongewenste mail of schrijf je opnieuw in met hetzelfde e-mailadres: dan sturen we de link nog eens.</p>

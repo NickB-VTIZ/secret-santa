@@ -31,7 +31,10 @@ test('parseBudget', () => {
 
 test('cleanEventInput: geldig event', () => {
   const r = v.cleanEventInput({ name: '  Kerst 2026 ', description: ' Leuk! ', budget: '15', eventDate: '2026-12-18', reminderAt: '2026-12-10T08:00' })
-  assert.deepEqual(r.value, { name: 'Kerst 2026', description: 'Leuk!', budget: 15, eventDate: '2026-12-18', reminderAt: '2026-12-10 08:00:00' })
+  assert.deepEqual(r.value, {
+    name: 'Kerst 2026', description: 'Leuk!', budget: 15, eventDate: '2026-12-18', reminderAt: '2026-12-10 08:00:00',
+    wishlistEnabled: true, messagesEnabled: true,
+  })
 })
 
 test('cleanEventInput: foutmeldingen', () => {
@@ -44,7 +47,20 @@ test('cleanEventInput: foutmeldingen', () => {
 
 test('cleanEventInput: lege optionele velden worden null', () => {
   const r = v.cleanEventInput({ name: 'x' })
-  assert.deepEqual(r.value, { name: 'x', description: null, budget: null, eventDate: null, reminderAt: null })
+  assert.deepEqual(r.value, {
+    name: 'x', description: null, budget: null, eventDate: null, reminderAt: null,
+    wishlistEnabled: true, messagesEnabled: true,
+  })
+})
+
+test('cleanEventInput: verlanglijstje en berichten kunnen uitgezet worden', () => {
+  const off = v.cleanEventInput({ name: 'x', wishlistEnabled: false, messagesEnabled: false }).value
+  assert.equal(off.wishlistEnabled, false)
+  assert.equal(off.messagesEnabled, false)
+  // Alleen een uitdrukkelijk false zet uit
+  const on = v.cleanEventInput({ name: 'x', wishlistEnabled: 'false', messagesEnabled: null }).value
+  assert.equal(on.wishlistEnabled, true)
+  assert.equal(on.messagesEnabled, true)
 })
 
 test('cleanText kapt af en normaliseert regeleinden', () => {

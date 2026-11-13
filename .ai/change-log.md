@@ -1,5 +1,14 @@
 # Wijzigingslog — secret-santa
 
+## [1.3.0] - 2026-11-13
+### Toegevoegd
+- Per event aan/uit te zetten: het verlanglijstje (`events.wishlist_enabled`) en de anonieme berichten (`events.messages_enabled`). Twee idempotente migraties; bestaande events blijven aan staan. De server weigert (409) lijstjes/berichten als de functie uit staat en verbergt de gegevens in `GET /api/me/:token`.
+- Mailteksten voor events zonder verlanglijstje (`introNoList`, bij herinnering ook `introDrawnNoList`), instelbaar in Mailinstellingen met voorbeeldkeuze "Event met/zonder verlanglijstje".
+- Berichten herwerkt: een gecombineerd blok met tabs ("Mijn Secret Santa" / "Mijn cadeaukind") en een "nieuw"-teken bij ongelezen berichten.
+### Gewijzigd
+- Trekking: nooit wederkerige koppels (als A B trekt, trekt B nooit A). Daardoor zijn minstens 3 deelnemers nodig; `validatePairs` weigert wederkerige koppels.
+- Berichtmeldingen zijn gebundeld: enkel een mail als er nog geen ongelezen eerder bericht van dezelfde afzender is.
+
 ## [1.2.0] - 2026-11-12
 ### Toegevoegd
 - Beheer → Mailinstellingen: afzender (naam, e-mail, antwoordadres) en teksten (onderwerp, titel, inleiding, knop) per mailsoort (uitnodiging, inschrijving, trekking, herinnering, berichtmelding) aanpasbaar, met live voorbeeld, variabelen, standaardtekst herstellen en testmail naar de admin.

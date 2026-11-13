@@ -68,6 +68,30 @@ test('herinnering kiest de eigen tekst per situatie', () => {
   assert.match(tpl.reminder({ participant, event, link, custom, isDrawn: true, hasWishlist: true }).html, /<p>C<\/p>/)
 })
 
+test('zonder verlanglijstje noemen de standaardmails het verlanglijstje niet', () => {
+  const base = { participant, event, link, wishlistEnabled: false }
+  const mails = [
+    tpl.invite(base), tpl.signup(base), tpl.drawn(base),
+    tpl.reminder({ ...base, isDrawn: false, hasWishlist: false }),
+    tpl.reminder({ ...base, isDrawn: true, hasWishlist: true }),
+  ]
+  for (const m of mails) assert.ok(!/verlanglijst/i.test(m.html + m.text + m.subject))
+  // Met verlanglijstje blijft alles zoals het was
+  assert.match(tpl.invite({ participant, event, link }).html, /verlanglijstje/)
+})
+
+test('eigen tekst zonder verlanglijstje wordt gebruikt als het uit staat', () => {
+  const custom = { intro: 'MET', introNoList: 'ZONDER {{naam}}' }
+  assert.match(tpl.invite({ participant, event, link, custom, wishlistEnabled: false }).html, /<p>ZONDER Jan/)
+  assert.match(tpl.invite({ participant, event, link, custom }).html, /<p>MET<\/p>/)
+})
+
+test('renderSample kent de varianten zonder verlanglijstje', () => {
+  assert.ok(!/verlanglijst/i.test(tpl.renderSample('invite', {}, 'noList').html))
+  assert.ok(!/verlanglijst/i.test(tpl.renderSample('reminder', {}, 'introNoList').html))
+  assert.ok(!/verlanglijst/i.test(tpl.renderSample('reminder', {}, 'introDrawnNoList').html))
+})
+
 test('berichtmelding ondersteunt {{wie}} en lekt geen inhoud', () => {
   const custom = { intro: '{{naam}}, {{wie}} schreef je.' }
   const m = tpl.messageNotice({ participant, event, link, fromRole: 'giver', custom, body: 'GEHEIM' })

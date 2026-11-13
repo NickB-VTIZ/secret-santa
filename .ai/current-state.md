@@ -13,13 +13,15 @@
 
 ## 3. Functionaliteiten
 - Admin: aanmelden, wachtwoord wijzigen, events CRUD, deelnemers (manueel, plakken/CSV, bewerken, verwijderen), uitsluitingen, uitnodigen, trekken, trekking herstellen, herinneringen (manueel + gepland, elke minuut gecontroleerd).
-- Deelnemer: verlanglijstje, trekking tonen + lijstje van de getrokkene, anonieme berichten in beide richtingen (met melding per mail zonder inhoud).
+- Deelnemer: verlanglijstje, trekking tonen + lijstje van de getrokkene, anonieme berichten in beide richtingen (tabs, ongelezen-teken, gebundelde melding per mail zonder inhoud).
+- Schakelaars per event (v1.3.0): verlanglijstje en anonieme berichten kunnen uitgezet worden (`wishlist_enabled`, `messages_enabled`); UI, API en mailteksten passen zich aan.
+- Trekking (v1.3.0): nooit wederkerige koppels (als A B trekt, trekt B nooit A).
 - Zelfinschrijving (v1.1.0): publieke link per event (`events.signup_code`, `signup_open`), akkoord verplicht (`participants.consented_at`), bevestigingsmail met persoonlijke link, gesloten na de trekking, optioneel beperkt via `SIGNUP_ALLOWED_DOMAINS`. API: `GET/POST /api/signup/:code`, admin `PUT /api/admin/events/:id/signup` en `POST .../signup/renew`.
 - Mailinstellingen (v1.2.0): afzender + teksten per mailsoort configureerbaar in het beheer; opgeslagen als JSON in `app_settings` (naam `mail`), in-memory gecachet en ververst bij opslaan. Afzender: admin-instelling, per deel terugval op `MAIL_FROM`. Variabelen `{{naam}} {{event}} {{datum}} {{budget}} {{link}}` (+ `{{wie}}` bij berichtmelding).
 - Privacy: de admin ziet nooit tokens, lijstjes of koppels.
 
 ## 4. Beperkingen
-- Minstens 3 deelnemers om te trekken.
+- Minstens 3 deelnemers om te trekken (wederkerige koppels zijn verboden).
 - Deelnemers en uitsluitingen zijn na de trekking vergrendeld (eerst trekking herstellen).
 - Mails vereisen `RESEND_API_KEY` en een bereikbare `APP_URL`.
 - Eén mailjob per event tegelijk; Resend-limiet: 600 ms tussen mails.

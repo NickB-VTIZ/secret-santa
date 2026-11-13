@@ -82,6 +82,9 @@ function startMailJob(eventId, kind, items) {
 }
 
 // ── DTO's ──────────────────────────────────────────────────────────
+// Functies staan standaard aan (ook als de kolom ontbreekt of NULL is)
+const flagOn = value => value === undefined || value === null ? true : !!Number(value)
+
 const eventDto = e => ({
   id: e.id,
   name: e.name,
@@ -92,6 +95,8 @@ const eventDto = e => ({
   reminderSentAt: e.reminder_sent_at,
   drawnAt: e.drawn_at,
   signupOpen: !!e.signup_open && !!e.signup_code,
+  wishlistEnabled: flagOn(e.wishlist_enabled),
+  messagesEnabled: flagOn(e.messages_enabled),
 })
 
 // De admin ziet bewust géén tokens, wishlists of koppels: de trekking blijft geheim
@@ -108,7 +113,10 @@ const participantDto = p => ({
 function buildMails(kind, event, participants, baseUrl, settings = {}, extra = {}) {
   return participants.map(p => {
     const link = tokens.participantLink(baseUrl, p.token)
-    const ctx = { participant: p, event, link, custom: settings.templates?.[kind] }
+    const ctx = {
+      participant: p, event, link, custom: settings.templates?.[kind],
+      wishlistEnabled: flagOn(event.wishlist_enabled),
+    }
     let message
     if (kind === 'invite') message = templates.invite(ctx)
     else if (kind === 'drawn') message = templates.drawn(ctx)
@@ -196,8 +204,8 @@ function createApp() {
     const { value, error } = v.cleanEventInput(req.body)
     if (error) return res.status(400).json({ error })
     const r = await db.query(
-      'INSERT INTO events (name, description, budget, event_date, reminder_at) VALUES (?, ?, ?, ?, ?)',
-      [value.name, value.description, value.budget, value.eventDate, value.reminderAt])
+      'INSERT INTO events (name, description, budget, event_date, reminder_at, wishlist_enabled, messages_enabled) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [value.name, value.description, value.budget, value.eventDate, value.reminderAt, value.wishlistEnabled ? 1 : 0, value.messagesEnabled ? 1 : 0])
     res.status(201).json({ id: r.insertId })
   }))
 
@@ -237,8 +245,10 @@ function createApp() {
     const reminderChanged = (oldReminder || null) !== (value.reminderAt || null)
     await db.query(
       `UPDATE events SET name = ?, description = ?, budget = ?, event_date = ?, reminder_at = ?,
+              wishlist_enabled = ?, messages_enabled = ?,
               reminder_sent_at = ${reminderChanged ? 'NULL' : 'reminder_sent_at'} WHERE id = ?`,
-      [value.name, value.description, value.budget, value.eventDate, value.reminderAt, id])
+      [value.name, value.description, value.budget, value.eventDate, value.reminderAt,
+        value.wishlistEnabled ? 1 : 0, value.messagesEnabled ? 1 : 0, id])
     res.json({ ok: true })
   }))
 
@@ -581,7 +591,10 @@ function createApp() {
     // Wie zich opnieuw inschrijft, krijgt gewoon zijn persoonlijke link nog eens.
     const link = tokens.participantLink(baseUrl(req), result.participant.token)
     const settings = await getMailSettings()
-    const message = templates.signup({ participant: result.participant, event: result.event, link, custom: settings.templates?.signup })
+    const message = templates.signup({
+      participant: result.participant, event: result.event, link, custom: settings.templates?.signup,
+      wishlistEnabled: flagOn(result.event.wishlist_enabled),
+    })
     mailer.send(withSender({ to: result.participant.email, ...message }, settings))
       .then(async r => {
         if (r.ok && result.isNew) {
@@ -602,7 +615,8 @@ function createApp() {
     if (!tokens.isValidToken(token)) { res.status(404).json({ error: 'Deze link is niet geldig.' }); return null }
     const me = await db.one(
       `SELECT p.*, e.name AS event_name, e.description AS event_description, e.budget AS event_budget,
-              e.event_date AS event_date, e.drawn_at AS event_drawn_at
+              e.event_date AS event_date, e.drawn_at AS event_drawn_at,
+              e.wishlist_enabled AS event_wishlist_enabled, e.messages_enabled AS event_messages_enabled
          FROM participants p JOIN events e ON e.id = p.event_id WHERE p.token = ?`, [token])
     if (!me) { res.status(404).json({ error: 'Deze link is niet geldig.' }); return null }
     return me
@@ -618,15 +632,20 @@ function createApp() {
 
     await db.query('UPDATE participants SET last_seen_at = ? WHERE id = ?', [v.formatLocalDateTime(new Date()), me.id])
 
+    const wishlistEnabled = flagOn(me.event_wishlist_enabled)
+    const messagesEnabled = flagOn(me.event_messages_enabled)
+
     const out = {
       name: me.name,
-      wishlist: me.wishlist || '',
+      wishlist: wishlistEnabled ? (me.wishlist || '') : '',
       event: {
         name: me.event_name,
         description: me.event_description,
         budget: me.event_budget === null ? null : Number(me.event_budget),
         eventDate: me.event_date,
         drawn: !!me.event_drawn_at,
+        wishlistEnabled,
+        messagesEnabled,
       },
       receiver: null,
       toReceiver: [],
@@ -639,12 +658,14 @@ function createApp() {
       const asReceiver = await db.one('SELECT id FROM assignments WHERE receiver_id = ?', [me.id])
 
       if (asGiver) {
-        out.receiver = { name: asGiver.name, wishlist: asGiver.wishlist || '' }
-        const rows = await db.query('SELECT * FROM messages WHERE assignment_id = ? ORDER BY id', [asGiver.id])
-        out.toReceiver = threadDto(rows, 'giver')
-        await db.query("UPDATE messages SET read_at = ? WHERE assignment_id = ? AND sender_role = 'receiver' AND read_at IS NULL", [v.formatLocalDateTime(new Date()), asGiver.id])
+        out.receiver = { name: asGiver.name, wishlist: wishlistEnabled ? (asGiver.wishlist || '') : '' }
+        if (messagesEnabled) {
+          const rows = await db.query('SELECT * FROM messages WHERE assignment_id = ? ORDER BY id', [asGiver.id])
+          out.toReceiver = threadDto(rows, 'giver')
+          await db.query("UPDATE messages SET read_at = ? WHERE assignment_id = ? AND sender_role = 'receiver' AND read_at IS NULL", [v.formatLocalDateTime(new Date()), asGiver.id])
+        }
       }
-      if (asReceiver) {
+      if (asReceiver && messagesEnabled) {
         const rows = await db.query('SELECT * FROM messages WHERE assignment_id = ? ORDER BY id', [asReceiver.id])
         out.fromGiver = threadDto(rows, 'receiver')
         await db.query("UPDATE messages SET read_at = ? WHERE assignment_id = ? AND sender_role = 'giver' AND read_at IS NULL", [v.formatLocalDateTime(new Date()), asReceiver.id])
@@ -656,6 +677,7 @@ function createApp() {
   app.put('/api/me/:token/wishlist', h(async (req, res) => {
     const me = await participantFromToken(req, res)
     if (!me) return
+    if (!flagOn(me.event_wishlist_enabled)) return res.status(409).json({ error: 'Het verlanglijstje is uitgeschakeld voor dit event.' })
     await db.query('UPDATE participants SET wishlist = ? WHERE id = ?', [v.cleanWishlist(req.body?.wishlist), me.id])
     res.json({ ok: true })
   }))
@@ -664,6 +686,7 @@ function createApp() {
   app.post('/api/me/:token/messages', h(async (req, res) => {
     const me = await participantFromToken(req, res)
     if (!me) return
+    if (!flagOn(me.event_messages_enabled)) return res.status(409).json({ error: 'Anonieme berichten zijn uitgeschakeld voor dit event.' })
     if (!me.event_drawn_at) return res.status(409).json({ error: 'Berichten kunnen pas na de trekking.' })
 
     const { value: body, error } = v.cleanMessage(req.body?.body)
@@ -681,10 +704,17 @@ function createApp() {
     if (Number(n) >= MAX_MESSAGES_PER_THREAD) return res.status(429).json({ error: 'Het maximum aantal berichten is bereikt.' })
 
     const senderRole = to === 'receiver' ? 'giver' : 'receiver'
+
+    // Meldingen worden gebundeld: zolang de ontvanger een eerder bericht van deze afzender
+    // nog niet las, is er al een melding onderweg en volgt er geen tweede.
+    const { pending } = await db.one(
+      'SELECT COUNT(*) AS pending FROM messages WHERE assignment_id = ? AND sender_role = ? AND read_at IS NULL',
+      [assignment.id, senderRole])
+
     await db.query('INSERT INTO messages (assignment_id, sender_role, body) VALUES (?, ?, ?)', [assignment.id, senderRole, body])
 
     // Melding zonder inhoud en zonder afzender
-    const other = await db.one('SELECT * FROM participants WHERE id = ?', [assignment.other_id])
+    const other = Number(pending) === 0 ? await db.one('SELECT * FROM participants WHERE id = ?', [assignment.other_id]) : null
     if (other) {
       const link = tokens.participantLink(baseUrl(req), other.token)
       const event = { name: me.event_name }

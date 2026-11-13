@@ -22,13 +22,13 @@ export default function Participant() {
 
   useEffect(() => { load() }, [load])
 
-  // Na de trekking af en toe controleren of er nieuwe berichten zijn
-  const drawn = data?.event.drawn
+  // Na de trekking af en toe controleren of er nieuwe berichten zijn (enkel als berichten aan staan)
+  const checkMessages = !!data?.event.drawn && !!data?.event.messagesEnabled
   useEffect(() => {
-    if (!drawn) return undefined
+    if (!checkMessages) return undefined
     const t = setInterval(load, 30000)
     return () => clearInterval(t)
-  }, [drawn, load])
+  }, [checkMessages, load])
 
   if (error && !data) {
     return (
@@ -44,6 +44,8 @@ export default function Participant() {
   if (!data) return <div className="center-screen">Laden…</div>
 
   const { event } = data
+  const wishlistOn = event.wishlistEnabled !== false
+  const messagesOn = event.messagesEnabled !== false
 
   return (
     <div className="app participant">
@@ -63,15 +65,18 @@ export default function Participant() {
 
         {!event.drawn && (
           <div className="alert alert-info">
-            De trekking is nog niet gebeurd. Je krijgt een mail zodra het zover is. Vul ondertussen alvast je verlanglijstje in.
+            De trekking is nog niet gebeurd. Je krijgt een mail zodra het zover is.
+            {wishlistOn && ' Vul ondertussen alvast je verlanglijstje in.'}
           </div>
         )}
 
-        {event.drawn && <Receiver data={data} api={api} reload={load} toast={toast} />}
+        {event.drawn && <Receiver data={data} wishlistOn={wishlistOn} />}
 
-        <Wishlist initial={data.wishlist} api={api} toast={toast} />
+        {wishlistOn && <Wishlist initial={data.wishlist} api={api} toast={toast} />}
 
-        {event.drawn && <GiverThread data={data} api={api} reload={load} toast={toast} />}
+        {event.drawn && messagesOn && data.receiver && (
+          <Messages data={data} api={api} reload={load} toast={toast} />
+        )}
 
         <p className="muted small center">Deze pagina is persoonlijk. Deel de link niet met anderen.</p>
       </main>
@@ -80,7 +85,7 @@ export default function Participant() {
 }
 
 // ── Voor wie koop ik een cadeau ──
-function Receiver({ data, api, reload, toast }) {
+function Receiver({ data, wishlistOn }) {
   const [revealed, setRevealed] = useState(false)
   const r = data.receiver
 
@@ -96,19 +101,12 @@ function Receiver({ data, api, reload, toast }) {
       ) : (
         <>
           <div className="reveal">{r.name}</div>
-          <div>
-            <h3>Verlanglijstje van {r.name}</h3>
-            {r.wishlist ? <p className="pre">{r.wishlist}</p> : <p className="muted">{r.name} heeft nog geen verlanglijstje ingevuld.</p>}
-          </div>
-          <Thread
-            title={`Anoniem bericht aan ${r.name}`}
-            hint={`${r.name} weet niet van wie het bericht komt.`}
-            messages={data.toReceiver}
-            to="receiver"
-            api={api}
-            reload={reload}
-            toast={toast}
-          />
+          {wishlistOn && (
+            <div>
+              <h3>Verlanglijstje van {r.name}</h3>
+              {r.wishlist ? <p className="pre">{r.wishlist}</p> : <p className="muted">{r.name} heeft nog geen verlanglijstje ingevuld.</p>}
+            </div>
+          )}
         </>
       )}
     </section>
@@ -148,16 +146,63 @@ function Wishlist({ initial, api, toast }) {
   )
 }
 
-// ── Berichten van mijn Secret Santa ──
-function GiverThread({ data, api, reload, toast }) {
+// ── Anonieme berichten: twee gesprekken op één plaats ──
+const CONVERSATIONS = [
+  { key: 'giver', label: 'Mijn Secret Santa' },
+  { key: 'receiver', label: 'Mijn cadeaukind' },
+]
+
+function Messages({ data, api, reload, toast }) {
+  const threads = {
+    giver: data.fromGiver || [],
+    receiver: data.toReceiver || [],
+  }
+  // Eerste gesprek met nieuwe berichten meteen tonen
+  const [active, setActive] = useState(
+    () => CONVERSATIONS.find(c => threads[c.key].some(m => m.isNew))?.key || 'giver',
+  )
+  // Het geopende gesprek toont "Nieuw" per bericht, de andere tab telt ze
+  const unread = key => (key === active ? 0 : threads[key].filter(m => m.isNew).length)
+  const open = key => setActive(key)
+
+  const r = data.receiver
+  const copy = active === 'giver'
+    ? {
+        title: 'Anoniem gesprek met je Secret Santa',
+        hint: 'Je Secret Santa blijft anoniem, maar je kan wel een vraag stellen of een tip geven.',
+      }
+    : {
+        title: `Anoniem gesprek met ${r.name}`,
+        hint: `${r.name} weet niet van wie je berichten komen.`,
+      }
+
   return (
     <section className="card stack">
-      <h2>💌 Mijn Secret Santa</h2>
+      <h2>💬 Anonieme berichten</h2>
+      <div className="tabs" role="tablist">
+        {CONVERSATIONS.map(c => {
+          const n = unread(c.key)
+          return (
+            <button
+              key={c.key}
+              type="button"
+              role="tab"
+              aria-selected={active === c.key}
+              className={`tab ${active === c.key ? 'tab-active' : ''}`}
+              onClick={() => open(c.key)}
+            >
+              {c.label}
+              {n > 0 && <span className="badge badge-new">{n} nieuw</span>}
+            </button>
+          )
+        })}
+      </div>
       <Thread
-        title="Anoniem bericht aan je Secret Santa"
-        hint="Je Secret Santa blijft anoniem, maar je kan wel een vraag stellen of een tip geven."
-        messages={data.fromGiver}
-        to="giver"
+        key={active}
+        title={copy.title}
+        hint={copy.hint}
+        messages={threads[active]}
+        to={active}
         api={api}
         reload={reload}
         toast={toast}

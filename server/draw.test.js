@@ -4,20 +4,54 @@ const { drawPairs, validatePairs, buildExclusionMap, mulberry32 } = require('./d
 
 const range = n => Array.from({ length: n }, (_, i) => i + 1)
 
-test('geeft een fout bij minder dan 2 deelnemers', () => {
+test('geeft een fout bij minder dan 3 deelnemers', () => {
   assert.equal(drawPairs([]).ok, false)
   assert.equal(drawPairs([1]).ok, false)
+  assert.match(drawPairs([1, 2], [], { seed: 1 }).error, /minstens 3/)
 })
 
-test('twee deelnemers trekken elkaar', () => {
-  const r = drawPairs([1, 2], [], { seed: 1 })
-  assert.equal(r.ok, true)
-  assert.deepEqual(validatePairs(r.pairs, [1, 2]), { ok: true })
+test('drie deelnemers vormen altijd een cyclus zonder wederkerig koppel', () => {
+  for (let seed = 1; seed <= 100; seed++) {
+    const r = drawPairs([1, 2, 3], [], { seed })
+    assert.equal(r.ok, true, `seed ${seed}`)
+    assert.deepEqual(validatePairs(r.pairs, [1, 2, 3]), { ok: true })
+  }
+})
+
+test('nooit wederkerige koppels: trekt A persoon B, dan trekt B nooit A', () => {
+  for (let seed = 1; seed <= 500; seed++) {
+    const ids = range(3 + (seed % 20))
+    const r = drawPairs(ids, [], { seed })
+    assert.equal(r.ok, true, `seed ${seed}`)
+    const receiverOf = new Map(r.pairs.map(p => [p.giverId, p.receiverId]))
+    for (const [giver, receiver] of receiverOf) {
+      assert.notEqual(receiverOf.get(receiver), giver, `seed ${seed}: ${giver} ↔ ${receiver}`)
+    }
+  }
+})
+
+test('wederkerige koppels blijven verboden samen met uitsluitingen', () => {
+  const ids = range(8)
+  const exclusions = [{ giverId: 1, receiverId: 2 }, { giverId: 3, receiverId: 4 }]
+  for (let seed = 1; seed <= 200; seed++) {
+    const r = drawPairs(ids, exclusions, { seed })
+    assert.equal(r.ok, true, `seed ${seed}`)
+    assert.deepEqual(validatePairs(r.pairs, ids, exclusions), { ok: true })
+  }
+})
+
+test('validatePairs weigert wederkerige koppels', () => {
+  const ids = [1, 2, 3, 4]
+  const pairs = [
+    { giverId: 1, receiverId: 2 }, { giverId: 2, receiverId: 1 },
+    { giverId: 3, receiverId: 4 }, { giverId: 4, receiverId: 3 },
+  ]
+  assert.match(validatePairs(pairs, ids).error, /elkaar/)
 })
 
 test('niemand trekt zichzelf en iedereen geeft en krijgt precies één cadeau', () => {
   for (let seed = 1; seed <= 200; seed++) {
-    const ids = range(2 + (seed % 25))
+    const ids = range(3 + (seed % 25))
     const r = drawPairs(ids, [], { seed })
     assert.equal(r.ok, true, `seed ${seed}`)
     assert.deepEqual(validatePairs(r.pairs, ids), { ok: true }, `seed ${seed}`)

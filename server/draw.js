@@ -3,6 +3,11 @@
 // Een geldige trekking is een derangement: iedereen geeft precies één cadeau
 // en krijgt precies één cadeau, niemand trekt zichzelf, en verboden koppels
 // (uitsluitingen) komen niet voor.
+//
+// Bovendien zijn wederkerige koppels nooit toegelaten: trekt A persoon B,
+// dan kan B nooit A trekken. Daardoor zijn minstens 3 deelnemers nodig.
+
+const MIN_PARTICIPANTS = 3
 
 /**
  * Normaliseert uitsluitingen naar een Map<giverId, Set<receiverId>>.
@@ -56,8 +61,13 @@ function solve(participantIds, forbidden, rng) {
   const assignment = new Map()
   const taken = new Set()
 
+  // Een ontvanger is niet toegelaten als hij de gever al als ontvanger heeft
+  // (dat zou een wederkerig koppel A→B, B→A opleveren).
   function options(giver) {
-    return participantIds.filter(r => !taken.has(r) && !forbidden.get(giver).has(r))
+    return participantIds.filter(r =>
+      !taken.has(r) &&
+      !forbidden.get(giver).has(r) &&
+      assignment.get(r) !== giver)
   }
 
   function step(remaining) {
@@ -96,7 +106,9 @@ function solve(participantIds, forbidden, rng) {
 function drawPairs(participantIds, exclusions = [], { seed, mutual = true } = {}) {
   const ids = [...new Set(participantIds)]
 
-  if (ids.length < 2) return { ok: false, error: 'Er zijn minstens 2 deelnemers nodig voor een trekking.' }
+  if (ids.length < MIN_PARTICIPANTS) {
+    return { ok: false, error: `Er zijn minstens ${MIN_PARTICIPANTS} deelnemers nodig voor een trekking (anders zouden twee mensen elkaar trekken).` }
+  }
 
   const forbidden = buildExclusionMap(ids, exclusions, { mutual })
 
@@ -128,13 +140,17 @@ function validatePairs(pairs, participantIds, exclusions = [], { mutual = true }
   if (receivers.size !== ids.length) return { ok: false, error: 'Een deelnemer krijgt meer dan één cadeau.' }
 
   const forbidden = buildExclusionMap(ids, exclusions, { mutual })
+  const receiverOf = new Map(pairs.map(p => [p.giverId, p.receiverId]))
   for (const { giverId, receiverId } of pairs) {
     if (!ids.includes(giverId) || !ids.includes(receiverId)) return { ok: false, error: 'Onbekende deelnemer in de trekking.' }
     if (forbidden.get(giverId).has(receiverId)) {
       return { ok: false, error: giverId === receiverId ? 'Iemand trekt zichzelf.' : 'Een uitsluiting wordt geschonden.' }
     }
+    if (receiverOf.get(receiverId) === giverId) {
+      return { ok: false, error: 'Twee deelnemers trekken elkaar.' }
+    }
   }
   return { ok: true }
 }
 
-module.exports = { drawPairs, validatePairs, buildExclusionMap, mulberry32, shuffle }
+module.exports = { drawPairs, validatePairs, buildExclusionMap, mulberry32, shuffle, MIN_PARTICIPANTS }

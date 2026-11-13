@@ -4,7 +4,9 @@ Secret Santa-app voor het personeel van VTI Zandhoven.
 
 - **Organisator (admin)** meldt aan met e-mail + wachtwoord, maakt events, voegt deelnemers toe (manueel of CSV/plakken), stelt uitsluitingen in en voert de trekking uit. De admin ziet de koppels niet.
 - **Zelfinschrijving**: de admin opent per event één publieke inschrijflink (`/inschrijven/<code>`). Leerkrachten geven naam en e-mailadres op en vinken aan dat ze akkoord gaan en meedoen. Pas na die toestemming worden ze deelnemer en krijgen ze een bevestigingsmail met hun persoonlijke link. Inschrijven kan tot de trekking of tot de admin de inschrijvingen sluit; de link kan vernieuwd worden.
-- **Deelnemers** krijgen een unieke link per mail (`/deelnemer/<token>`) en kunnen daar hun verlanglijstje invullen, zien wie ze getrokken hebben + diens lijstje, en anoniem berichten sturen naar hun trekking en hun Secret Santa.
+- **Deelnemers** krijgen een unieke link per mail (`/deelnemer/<token>`) en kunnen daar hun verlanglijstje invullen, zien wie ze getrokken hebben + diens lijstje, en anoniem berichten sturen naar hun trekking en hun Secret Santa (tabs met "nieuw"-teken; per ongelezen reeks wordt maar één melding gemaild).
+- **Schakelaars per event**: de admin kan het verlanglijstje en de anonieme berichten per event uitzetten. Pagina's, API en mailteksten passen zich aan.
+- **Trekking**: uitsluitingen worden gerespecteerd en er zijn nooit wederkerige koppels (als A B trekt, trekt B nooit A). Daarvoor zijn minstens 3 deelnemers nodig.
 - **Mails** (via Resend): uitnodiging, bevestiging van inschrijving, trekkingsmelding, herinnering (gepland of manueel) en melding bij een nieuw bericht (zonder inhoud).
 - **Mailinstellingen** (knop "Mailinstellingen" in het beheer): de admin past de afzender (naam, e-mailadres, antwoordadres) en de teksten van elke mailsoort aan, met live voorbeeld, variabelen (`{{naam}}`, `{{event}}`, `{{datum}}`, `{{budget}}`, `{{link}}`, en `{{wie}}` bij de berichtmelding), "Standaard herstellen" per veld en een testmail naar jezelf.
 

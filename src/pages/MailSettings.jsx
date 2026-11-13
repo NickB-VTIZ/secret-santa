@@ -7,7 +7,12 @@ const REMINDER_VARIANTS = [
   { key: 'introNoWishlist', label: 'Nog geen verlanglijstje' },
   { key: 'introWishlist', label: 'Wel verlanglijstje' },
   { key: 'introDrawn', label: 'Na de trekking' },
+  { key: 'introNoList', label: 'Voor de trekking, verlanglijstje uitgeschakeld' },
+  { key: 'introDrawnNoList', label: 'Na de trekking, verlanglijstje uitgeschakeld' },
 ]
+
+// Soorten met een aparte tekst voor events zonder verlanglijstje
+const NO_LIST_KINDS = ['invite', 'signup', 'drawn']
 
 /** Beheerpagina: afzender en mailteksten aanpassen. */
 export default function MailSettings() {
@@ -279,6 +284,18 @@ export default function MailSettings() {
                   Voorbeeld voor
                   <select value={variant} onChange={e => setVariant(e.target.value)}>
                     {REMINDER_VARIANTS.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+                  </select>
+                </label>
+              )}
+              {NO_LIST_KINDS.includes(kind.key) && (
+                <label>
+                  Voorbeeld voor
+                  <select
+                    value={variant === 'noList' ? 'noList' : 'introWishlist'}
+                    onChange={e => setVariant(e.target.value)}
+                  >
+                    <option value="introWishlist">Event met verlanglijstje</option>
+                    <option value="noList">Event zonder verlanglijstje</option>
                   </select>
                 </label>
               )}

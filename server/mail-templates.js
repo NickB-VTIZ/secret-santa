@@ -47,6 +47,7 @@ const SUBJECT = 'Onderwerp'
 const TITLE = 'Titel in de mail'
 const BUTTON = 'Tekst van de knop'
 const INTRO_MAX = 2000
+const NO_LIST = 'Tekst als het verlanglijstje uitgeschakeld is'
 
 const KINDS = {
   invite: {
@@ -56,6 +57,7 @@ const KINDS = {
       subject: field(SUBJECT, 'Secret Santa {{event}}: jouw persoonlijke link', 150),
       title: field(TITLE, 'Secret Santa — {{event}}', 150),
       intro: field('Tekst', 'Dag {{naam}}, je doet mee aan Secret Santa. Vul via je persoonlijke pagina je verlanglijstje in. Na de trekking zie je daar ook voor wie je een cadeau koopt.', INTRO_MAX, true),
+      introNoList: field(NO_LIST, 'Dag {{naam}}, je doet mee aan Secret Santa. Na de trekking zie je op je persoonlijke pagina voor wie je een cadeau koopt.', INTRO_MAX, true),
       button: field(BUTTON, 'Open mijn pagina', 60),
     },
   },
@@ -66,6 +68,7 @@ const KINDS = {
       subject: field(SUBJECT, 'Secret Santa {{event}}: je bent ingeschreven', 150),
       title: field(TITLE, 'Ingeschreven — {{event}}', 150),
       intro: field('Tekst', 'Dag {{naam}}, bedankt voor je inschrijving: je doet mee aan Secret Santa. Vul via je persoonlijke pagina je verlanglijstje in. Na de trekking zie je daar ook voor wie je een cadeau koopt.', INTRO_MAX, true),
+      introNoList: field(NO_LIST, 'Dag {{naam}}, bedankt voor je inschrijving: je doet mee aan Secret Santa. Na de trekking zie je op je persoonlijke pagina voor wie je een cadeau koopt.', INTRO_MAX, true),
       button: field(BUTTON, 'Open mijn pagina', 60),
     },
   },
@@ -76,6 +79,7 @@ const KINDS = {
       subject: field(SUBJECT, 'Secret Santa {{event}}: de trekking is gedaan', 150),
       title: field(TITLE, 'De trekking is gedaan!', 150),
       intro: field('Tekst', 'Dag {{naam}}, je weet nu voor wie je een cadeau koopt. Open je persoonlijke pagina om het te ontdekken en het verlanglijstje te bekijken.', INTRO_MAX, true),
+      introNoList: field(NO_LIST, 'Dag {{naam}}, je weet nu voor wie je een cadeau koopt. Open je persoonlijke pagina om het te ontdekken.', INTRO_MAX, true),
       button: field(BUTTON, 'Bekijk wie ik getrokken heb', 60),
     },
   },
@@ -88,6 +92,8 @@ const KINDS = {
       introNoWishlist: field('Tekst: voor de trekking, nog geen verlanglijstje', 'Dag {{naam}}, de trekking nadert, maar je hebt nog geen verlanglijstje ingevuld. Doe dat even, zodat je Secret Santa weet wat je blij maakt.', INTRO_MAX, true),
       introWishlist: field('Tekst: voor de trekking, verlanglijstje staat klaar', 'Dag {{naam}}, de trekking is nog niet gedaan. Je verlanglijstje staat al klaar, super!', INTRO_MAX, true),
       introDrawn: field('Tekst: na de trekking', 'Dag {{naam}}, een vriendelijke herinnering: vergeet je cadeau niet. Je vindt je getrokken collega en diens verlanglijstje op je persoonlijke pagina.', INTRO_MAX, true),
+      introNoList: field('Tekst: voor de trekking (verlanglijstje uitgeschakeld)', 'Dag {{naam}}, de trekking is nog niet gedaan. Zodra het zover is, ontdek je op je persoonlijke pagina voor wie je een cadeau koopt.', INTRO_MAX, true),
+      introDrawnNoList: field('Tekst: na de trekking (verlanglijstje uitgeschakeld)', 'Dag {{naam}}, een vriendelijke herinnering: vergeet je cadeau niet. Je vindt je getrokken collega op je persoonlijke pagina.', INTRO_MAX, true),
       button: field(BUTTON, 'Open mijn pagina', 60),
     },
   },
@@ -203,21 +209,28 @@ function build(kind, { participant, event, link, custom }, { introField = 'intro
   }
 }
 
+// Zonder verlanglijstje (wishlistEnabled === false) gebruiken de mails een eigen tekst
+const listField = ctx => (ctx.wishlistEnabled === false ? 'introNoList' : 'intro')
+
 function invite(ctx) {
-  return build('invite', ctx)
+  return build('invite', ctx, { introField: listField(ctx) })
 }
 
 // Bevestiging na zelf inschrijven via de openbare link
 function signup(ctx) {
-  return build('signup', ctx)
+  return build('signup', ctx, { introField: listField(ctx) })
 }
 
 function drawn(ctx) {
-  return build('drawn', ctx)
+  return build('drawn', ctx, { introField: listField(ctx) })
 }
 
 function reminder({ isDrawn, hasWishlist, ...ctx }) {
-  const introField = isDrawn ? 'introDrawn' : hasWishlist ? 'introWishlist' : 'introNoWishlist'
+  const noList = ctx.wishlistEnabled === false
+  let introField
+  if (isDrawn) introField = noList ? 'introDrawnNoList' : 'introDrawn'
+  else if (noList) introField = 'introNoList'
+  else introField = hasWishlist ? 'introWishlist' : 'introNoWishlist'
   return build('reminder', ctx, { introField })
 }
 
@@ -229,17 +242,23 @@ function messageNotice({ fromRole, ...ctx }) {
 
 /** Voorbeeldmail met verzonnen gegevens, voor voorbeeld en testmail in het beheer. */
 function renderSample(kind, custom, variant) {
+  const noList = ['noList', 'introNoList', 'introDrawnNoList'].includes(variant)
   const ctx = {
     participant: { name: 'Anna Peeters' },
     event: { name: 'Secret Santa 2026', event_date: '2026-12-18', budget: 15 },
     link: 'https://santa.vtiz.be/deelnemer/VOORBEELDLINK',
     custom,
+    wishlistEnabled: !noList,
   }
   switch (kind) {
     case 'invite': return invite(ctx)
     case 'signup': return signup(ctx)
     case 'drawn': return drawn(ctx)
-    case 'reminder': return reminder({ ...ctx, isDrawn: variant === 'introDrawn', hasWishlist: variant === 'introWishlist' })
+    case 'reminder': return reminder({
+      ...ctx,
+      isDrawn: variant === 'introDrawn' || variant === 'introDrawnNoList',
+      hasWishlist: variant === 'introWishlist',
+    })
     case 'messageNotice': return messageNotice({ ...ctx, fromRole: 'giver' })
     default: return null
   }

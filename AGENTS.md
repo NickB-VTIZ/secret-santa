@@ -17,7 +17,8 @@
 - Tokens zijn 32 tekens uit `crypto.randomBytes`; ongeldige of onbekende tokens geven altijd dezelfde 404.
 - Berichtmeldingen per mail bevatten nooit de inhoud of de afzender.
 - API-antwoorden zijn `Cache-Control: no-store`; `Referrer-Policy: no-referrer` voorkomt lekken van de token-URL.
-- Trekking = derangement met (wederzijdse) uitsluitingen, gebeurt in één transactie met `FOR UPDATE`.
+- Trekking = derangement met (wederzijdse) uitsluitingen en zonder wederkerige koppels (A→B én B→A kan nooit), minstens 3 deelnemers; gebeurt in één transactie met `FOR UPDATE`.
+- Per event schakelbaar: `wishlist_enabled` en `messages_enabled`; de server dwingt dit af (409) en verbergt de gegevens in `GET /api/me/:token`.
 - Zelfinschrijving (`/inschrijven/:code`): deelnemer wordt enkel toegevoegd bij `consent === true`; een dubbele inschrijving geeft hetzelfde neutrale antwoord (geen lek van wie meedoet); na de trekking is inschrijven geblokkeerd.
 
 ## Versiebeheer & deploy

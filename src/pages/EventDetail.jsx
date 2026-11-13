@@ -114,6 +114,8 @@ export default function EventDetail() {
                   {event.reminderAt && (event.reminderSentAt ? ' (verzonden)' : ' (gepland)')}
                 </dd>
               </div>
+              <div><dt>Verlanglijstje</dt><dd>{event.wishlistEnabled ? 'Aan' : 'Uit'}</dd></div>
+              <div><dt>Anonieme berichten</dt><dd>{event.messagesEnabled ? 'Aan' : 'Uit'}</dd></div>
               {drawn && <div><dt>Getrokken op</dt><dd>{formatDateTime(event.drawnAt)}</dd></div>}
             </dl>
             <div className="row">
@@ -191,6 +193,7 @@ export default function EventDetail() {
         eventId={id}
         participants={participants}
         drawn={drawn}
+        wishlistEnabled={event.wishlistEnabled}
         running={running}
         mailConfigured={mailConfigured}
         act={act}
@@ -265,7 +268,7 @@ function SignupLink({ eventId, signup, drawn, act, toast }) {
 }
 
 // ════════════════════ Deelnemers ════════════════════
-function Participants({ eventId, participants, drawn, running, mailConfigured, act, toast, onChanged }) {
+function Participants({ eventId, participants, drawn, wishlistEnabled = true, running, mailConfigured, act, toast, onChanged }) {
   const [mode, setMode] = useState(null) // null | 'one' | 'paste'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -357,13 +360,13 @@ function Participants({ eventId, participants, drawn, running, mailConfigured, a
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Naam</th><th>E-mail</th><th>Uitgenodigd</th><th>Lijstje</th><th /></tr>
+              <tr><th>Naam</th><th>E-mail</th><th>Uitgenodigd</th>{wishlistEnabled && <th>Lijstje</th>}<th /></tr>
             </thead>
             <tbody>
               {participants.map(p => (
                 editId === p.id ? (
                   <tr key={p.id}>
-                    <td colSpan={5}>
+                    <td colSpan={wishlistEnabled ? 5 : 4}>
                       <form className="inline-form" onSubmit={saveEdit}>
                         <input value={editName} onChange={e => setEditName(e.target.value)} maxLength={150} required />
                         <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} required />
@@ -377,7 +380,7 @@ function Participants({ eventId, participants, drawn, running, mailConfigured, a
                     <td>{p.name}</td>
                     <td className="muted">{p.email}</td>
                     <td>{p.invitedAt ? <span title={formatDateTime(p.invitedAt)}>✔︎ {formatDate(p.invitedAt)}</span> : <span className="muted">Nee</span>}</td>
-                    <td>{p.hasWishlist ? '✔︎' : <span className="muted">—</span>}</td>
+                    {wishlistEnabled && <td>{p.hasWishlist ? '✔︎' : <span className="muted">—</span>}</td>}
                     <td className="actions">
                       <button className="btn btn-small" disabled={running || !mailConfigured} onClick={() => invite(p)} title="Uitnodiging (opnieuw) versturen">✉️</button>
                       <button className="btn btn-small" onClick={() => startEdit(p)} title="Bewerken">✏️</button>

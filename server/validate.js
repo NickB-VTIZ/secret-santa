@@ -60,6 +60,7 @@ function cleanEventInput(body = {}) {
   const reminderAt = parseDateTime(body.reminderAt)
   if (reminderAt === undefined) return { error: 'Ongeldig herinneringsmoment.' }
 
+  // Functies staan standaard aan; enkel een uitdrukkelijk `false` zet ze uit
   return {
     value: {
       name,
@@ -67,6 +68,8 @@ function cleanEventInput(body = {}) {
       budget,
       eventDate,
       reminderAt,
+      wishlistEnabled: body.wishlistEnabled !== false,
+      messagesEnabled: body.messagesEnabled !== false,
     },
   }
 }

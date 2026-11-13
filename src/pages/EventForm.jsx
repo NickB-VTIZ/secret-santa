@@ -8,11 +8,14 @@ export default function EventForm({ initial, submitLabel, onSubmit, onCancel }) 
     budget: initial?.budget ?? '',
     eventDate: initial?.eventDate || '',
     reminderAt: initial?.reminderAt || '',
+    wishlistEnabled: initial?.wishlistEnabled ?? true,
+    messagesEnabled: initial?.messagesEnabled ?? true,
   })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }))
+  const toggle = key => e => setForm(f => ({ ...f, [key]: e.target.checked }))
 
   const submit = async e => {
     e.preventDefault()
@@ -51,6 +54,17 @@ export default function EventForm({ initial, submitLabel, onSubmit, onCancel }) 
           <input type="datetime-local" value={form.reminderAt} onChange={set('reminderAt')} />
         </label>
       </div>
+      <fieldset className="stack">
+        <legend>Functies voor de deelnemers</legend>
+        <label className="row">
+          <input type="checkbox" checked={form.wishlistEnabled} onChange={toggle('wishlistEnabled')} />
+          <span>Verlanglijstje: deelnemers vullen een lijstje in en zien dat van hun getrokken collega</span>
+        </label>
+        <label className="row">
+          <input type="checkbox" checked={form.messagesEnabled} onChange={toggle('messagesEnabled')} />
+          <span>Anonieme berichten: deelnemers kunnen anoniem met elkaar chatten na de trekking</span>
+        </label>
+      </fieldset>
       {error && <div className="alert alert-error">{error}</div>}
       <div className="row">
         <button className="btn btn-primary" disabled={busy}>{busy ? 'Bezig…' : submitLabel}</button>

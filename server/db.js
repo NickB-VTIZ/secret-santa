@@ -84,6 +84,9 @@ const MIGRATIONS = [
   'ALTER TABLE events ADD UNIQUE INDEX IF NOT EXISTS uq_events_signup_code (signup_code)',
   // Moment waarop een deelnemer zich zelf inschreef en akkoord ging
   'ALTER TABLE participants ADD COLUMN IF NOT EXISTS consented_at DATETIME NULL',
+  // Verlanglijstje en anonieme berichten kunnen per event uitgezet worden (standaard aan)
+  'ALTER TABLE events ADD COLUMN IF NOT EXISTS wishlist_enabled TINYINT(1) NOT NULL DEFAULT 1',
+  'ALTER TABLE events ADD COLUMN IF NOT EXISTS messages_enabled TINYINT(1) NOT NULL DEFAULT 1',
 ]
 
 function createPool(env = process.env) {
