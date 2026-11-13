@@ -87,6 +87,8 @@ const MIGRATIONS = [
   // Verlanglijstje en anonieme berichten kunnen per event uitgezet worden (standaard aan)
   'ALTER TABLE events ADD COLUMN IF NOT EXISTS wishlist_enabled TINYINT(1) NOT NULL DEFAULT 1',
   'ALTER TABLE events ADD COLUMN IF NOT EXISTS messages_enabled TINYINT(1) NOT NULL DEFAULT 1',
+  // Minimumbudget; de bestaande kolom `budget` is het maximum
+  'ALTER TABLE events ADD COLUMN IF NOT EXISTS budget_min DECIMAL(8,2) NULL',
 ]
 
 function createPool(env = process.env) {

@@ -18,3 +18,14 @@ export function formatBudget(budget) {
   if (budget === null || budget === undefined || budget === '') return ''
   return '€ ' + Number(budget).toFixed(2).replace('.', ',')
 }
+
+/** "€ 10,00 tot € 20,00", "vanaf € 10,00", "€ 20,00" of '' als er geen budget is. */
+export function formatBudgetRange(min, max) {
+  const has = v => v !== null && v !== undefined && v !== ''
+  if (has(min) && has(max)) {
+    return Number(min) === Number(max) ? formatBudget(max) : `${formatBudget(min)} tot ${formatBudget(max)}`
+  }
+  if (has(min)) return `vanaf ${formatBudget(min)}`
+  if (has(max)) return formatBudget(max)
+  return ''
+}

@@ -1,6 +1,7 @@
 # Taken — secret-santa
 
 ## Open
+- [ ] v1.4.0 uitproberen op de NAS: migratie `budget_min`, minimum/maximum budget instellen, per deelnemer uitnodiging en trekkingsmail opnieuw versturen.
 - [ ] v1.3.0 uitproberen op de NAS: migratie, schakelaars voor verlanglijstje/berichten, trekking zonder wederkerige koppels.
 - [ ] Mailinstellingen (v1.2.0) uitproberen op de NAS: opslaan, voorbeeld, testmail, afzender `santa.vtiz.be`.
 - [ ] Zelfinschrijving (v1.1.0) testen op een echte MariaDB: migratie, inschrijven, dubbele inschrijving, sluiten, link vernieuwen.
@@ -18,3 +19,4 @@
 - [x] Zelfinschrijving via publieke link (v1.1.0), 68 unit tests.
 - [x] Configureerbare mailteksten en afzender in het beheer (v1.2.0), 89 unit tests.
 - [x] Schakelaars voor verlanglijstje en berichten, herwerkte berichten, geen wederkerige koppels (v1.3.0), 96 unit tests.
+- [x] Minimum- en maximumbudget, mail per deelnemer opnieuw versturen (v1.4.0), 98 unit tests.

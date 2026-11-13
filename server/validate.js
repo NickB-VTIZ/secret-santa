@@ -51,8 +51,14 @@ function cleanEventInput(body = {}) {
   const name = cleanText(body.name, LIMITS.eventName)
   if (!name) return { error: 'Geef het event een naam.' }
 
-  const budget = parseBudget(body.budget)
-  if (budget === undefined) return { error: 'Ongeldig budget.' }
+  // Minimum en maximum zijn beide optioneel; `budget` blijft als oude naam voor het maximum werken
+  const budgetMin = parseBudget(body.budgetMin)
+  if (budgetMin === undefined) return { error: 'Ongeldig minimumbudget.' }
+  const budgetMax = parseBudget(body.budgetMax !== undefined ? body.budgetMax : body.budget)
+  if (budgetMax === undefined) return { error: 'Ongeldig maximumbudget.' }
+  if (budgetMin !== null && budgetMax !== null && budgetMin > budgetMax) {
+    return { error: 'Het minimumbudget mag niet hoger zijn dan het maximumbudget.' }
+  }
 
   const eventDate = parseDate(body.eventDate)
   if (eventDate === undefined) return { error: 'Ongeldige datum (gebruik JJJJ-MM-DD).' }
@@ -65,7 +71,8 @@ function cleanEventInput(body = {}) {
     value: {
       name,
       description: cleanText(body.description, LIMITS.description) || null,
-      budget,
+      budgetMin,
+      budgetMax,
       eventDate,
       reminderAt,
       wishlistEnabled: body.wishlistEnabled !== false,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { participantApi } from '../lib/api.js'
-import { formatBudget, formatDate, formatDateTime } from '../lib/format.js'
+import { formatBudgetRange, formatDate, formatDateTime } from '../lib/format.js'
 import { useToast } from '../hooks/useToast.jsx'
 
 export default function Participant() {
@@ -58,7 +58,7 @@ export default function Participant() {
           <h1>Hallo {data.name}!</h1>
           {event.description && <p className="pre">{event.description}</p>}
           <dl className="facts">
-            <div><dt>Budget</dt><dd>{event.budget !== null ? formatBudget(event.budget) : 'Vrij'}</dd></div>
+            <div><dt>Budget</dt><dd>{formatBudgetRange(event.budgetMin, event.budgetMax) || 'Vrij'}</dd></div>
             {event.eventDate && <div><dt>Datum</dt><dd>{formatDate(event.eventDate)}</dd></div>}
           </dl>
         </section>

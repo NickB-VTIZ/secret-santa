@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { admin } from '../lib/api.js'
-import { formatBudget, formatDate } from '../lib/format.js'
+import { formatBudgetRange, formatDate } from '../lib/format.js'
 import { useToast } from '../hooks/useToast.jsx'
 import EventForm from './EventForm.jsx'
 
@@ -52,7 +52,7 @@ export default function Events() {
             </div>
             <div className="muted small">
               {e.participantCount} deelnemer{e.participantCount === 1 ? '' : 's'} · {e.invitedCount} uitgenodigd
-              {e.budget !== null && ` · budget ${formatBudget(e.budget)}`}
+              {formatBudgetRange(e.budgetMin, e.budgetMax) && ` · budget ${formatBudgetRange(e.budgetMin, e.budgetMax)}`}
               {e.eventDate && ` · ${formatDate(e.eventDate)}`}
             </div>
           </Link>

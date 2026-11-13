@@ -6,5 +6,6 @@
 - **Mailjobs zijn in-memory:** na een herstart van de container verdwijnt de voortgangsinfo, en een lopende job wordt niet hervat (opnieuw uitnodigen kan, `invited_at` voorkomt dubbels bij "nog niet uitgenodigden").
 - **Berichten:** maximaal 100 per koppeling; de ontvanger krijgt enkel een melding als er nog geen ongelezen eerder bericht van dezelfde afzender is (gebundeld).
 - **Schakelaars (v1.3.0):** de migraties voor `wishlist_enabled` en `messages_enabled` zijn nog niet op een echte MariaDB uitgeprobeerd. Een event met precies 2 deelnemers kan niet meer getrokken worden (wederkerig verbod).
+- **Budget (v1.4.0):** de migratie voor `events.budget_min` en de route `POST /api/admin/events/:id/participants/:pid/send` zijn enkel via unit tests van de pure logica gecontroleerd, nog niet op een echte MariaDB. De kolom `budget` blijft het maximum.
 - **Tooling:** de bestandsschrijver van sommige AI-tools zet HTML-entiteiten om naar kale tekens; gebruik unicode-escapes of JSX-stringexpressies.
 - **Vite CJS-waarschuwing:** `The CJS build of Vite's Node API is deprecated` bij `npm run build`; onschadelijk.

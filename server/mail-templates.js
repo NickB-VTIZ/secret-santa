@@ -28,6 +28,17 @@ function formatBudget(budget) {
   return Number.isFinite(n) ? `€ ${n.toFixed(2).replace('.', ',')}` : ''
 }
 
+/** Budget als bereik: min en/of max (`max` is de kolom `budget`). Leeg als niets is ingesteld. */
+function formatBudgetRange(min, max) {
+  const lo = formatBudget(min)
+  const hi = formatBudget(max)
+  if (lo && hi) return Number(min) === Number(max) ? hi : `${lo} tot ${hi}`
+  if (lo) return `vanaf ${lo}`
+  return hi
+}
+
+const eventBudget = event => formatBudgetRange(event.budget_min, event.budget)
+
 // ── Plaatshouders ──────────────────────────────────────────────────
 const PLACEHOLDERS = [
   { key: 'naam', label: 'Naam van de deelnemer' },
@@ -181,7 +192,7 @@ function textBody(lines) {
 function eventDetails(event) {
   return [
     event.event_date ? `Datum: ${formatDate(event.event_date)}` : '',
-    formatBudget(event.budget) ? `Budget: ${formatBudget(event.budget)}` : '',
+    eventBudget(event) ? `Budget: ${eventBudget(event)}` : '',
   ]
 }
 
@@ -190,7 +201,7 @@ function build(kind, { participant, event, link, custom }, { introField = 'intro
     naam: participant.name,
     event: event.name,
     datum: formatDate(event.event_date),
-    budget: formatBudget(event.budget),
+    budget: eventBudget(event),
     link,
     ...extraVars,
   }
@@ -265,7 +276,7 @@ function renderSample(kind, custom, variant) {
 }
 
 module.exports = {
-  esc, formatDate, formatBudget, fill, findPlaceholders,
+  esc, formatDate, formatBudget, formatBudgetRange, fill, findPlaceholders,
   KINDS, PLACEHOLDERS, placeholdersOf, describeKinds, renderSample,
   invite, signup, drawn, reminder, messageNotice,
 }

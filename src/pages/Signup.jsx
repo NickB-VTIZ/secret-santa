@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { publicApi } from '../lib/api.js'
-import { formatBudget, formatDate } from '../lib/format.js'
+import { formatBudgetRange, formatDate } from '../lib/format.js'
 
 /** Openbare inschrijfpagina: één link voor alle leerkrachten, zonder aanmelding. */
 export default function Signup() {
@@ -61,7 +61,7 @@ export default function Signup() {
           <h1>Doe mee met Secret Santa</h1>
           {event.description && <p className="pre">{event.description}</p>}
           <dl className="facts">
-            <div><dt>Budget</dt><dd>{event.budget !== null ? formatBudget(event.budget) : 'Vrij'}</dd></div>
+            <div><dt>Budget</dt><dd>{formatBudgetRange(event.budgetMin, event.budgetMax) || 'Vrij'}</dd></div>
             {event.eventDate && <div><dt>Datum</dt><dd>{formatDate(event.eventDate)}</dd></div>}
           </dl>
         </section>

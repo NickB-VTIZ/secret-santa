@@ -1,5 +1,12 @@
 # Wijzigingslog — secret-santa
 
+## [1.4.0] - 2026-11-13
+### Toegevoegd
+- Budget met minimum en maximum per event: nieuwe kolom `events.budget_min` (idempotente migratie); de bestaande kolom `budget` is nu het maximum. Mails en pagina's tonen "€ 10,00 tot € 20,00", "vanaf € 10,00" of "€ 20,00".
+- Per deelnemer opnieuw mailen: uitnodiging met unieke link (✉️) en, na de trekking, de trekkingsmail (🎲✉️) via `POST /api/admin/events/:id/participants/:pid/send` met `{ kind: 'invite' | 'drawn' }`. De mails bevatten enkel de persoonlijke link, nooit het koppel.
+### Gewijzigd
+- API-velden `budgetMin` en `budgetMax` vervangen `budget` (admin-event, inschrijfpagina en `GET /api/me/:token`). Invoer met enkel `budget` wordt nog als maximum aanvaard.
+
 ## [1.3.0] - 2026-11-13
 ### Toegevoegd
 - Per event aan/uit te zetten: het verlanglijstje (`events.wishlist_enabled`) en de anonieme berichten (`events.messages_enabled`). Twee idempotente migraties; bestaande events blijven aan staan. De server weigert (409) lijstjes/berichten als de functie uit staat en verbergt de gegevens in `GET /api/me/:token`.

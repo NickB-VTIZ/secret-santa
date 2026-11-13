@@ -5,7 +5,8 @@ export default function EventForm({ initial, submitLabel, onSubmit, onCancel }) 
   const [form, setForm] = useState({
     name: initial?.name || '',
     description: initial?.description || '',
-    budget: initial?.budget ?? '',
+    budgetMin: initial?.budgetMin ?? '',
+    budgetMax: initial?.budgetMax ?? '',
     eventDate: initial?.eventDate || '',
     reminderAt: initial?.reminderAt || '',
     wishlistEnabled: initial?.wishlistEnabled ?? true,
@@ -22,7 +23,11 @@ export default function EventForm({ initial, submitLabel, onSubmit, onCancel }) 
     setBusy(true)
     setError('')
     try {
-      await onSubmit({ ...form, budget: form.budget === '' ? null : form.budget })
+      await onSubmit({
+        ...form,
+        budgetMin: form.budgetMin === '' ? null : form.budgetMin,
+        budgetMax: form.budgetMax === '' ? null : form.budgetMax,
+      })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -42,9 +47,15 @@ export default function EventForm({ initial, submitLabel, onSubmit, onCancel }) 
       </label>
       <div className="grid-3">
         <label>
-          Budget (€)
-          <input type="number" min="0" max="9999" step="0.5" value={form.budget} onChange={set('budget')} placeholder="15" />
+          Minimumbudget (€)
+          <input type="number" min="0" max="9999" step="0.5" value={form.budgetMin} onChange={set('budgetMin')} placeholder="10" />
         </label>
+        <label>
+          Maximumbudget (€)
+          <input type="number" min="0" max="9999" step="0.5" value={form.budgetMax} onChange={set('budgetMax')} placeholder="15" />
+        </label>
+      </div>
+      <div className="grid-3">
         <label>
           Datum cadeau-uitwisseling
           <input type="date" value={form.eventDate} onChange={set('eventDate')} />

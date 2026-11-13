@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { admin } from '../lib/api.js'
-import { formatBudget, formatDate, formatDateTime } from '../lib/format.js'
+import { formatBudgetRange, formatDate, formatDateTime } from '../lib/format.js'
 import { useToast } from '../hooks/useToast.jsx'
 import EventForm from './EventForm.jsx'
 
@@ -105,7 +105,7 @@ export default function EventDetail() {
             </div>
             {event.description && <p className="pre">{event.description}</p>}
             <dl className="facts">
-              <div><dt>Budget</dt><dd>{event.budget !== null ? formatBudget(event.budget) : '—'}</dd></div>
+              <div><dt>Budget</dt><dd>{formatBudgetRange(event.budgetMin, event.budgetMax) || '—'}</dd></div>
               <div><dt>Datum</dt><dd>{event.eventDate ? formatDate(event.eventDate) : '—'}</dd></div>
               <div>
                 <dt>Herinnering</dt>
@@ -308,6 +308,11 @@ function Participants({ eventId, participants, drawn, wishlistEnabled = true, ru
 
   const invite = p => act(() => admin.post(`/api/admin/events/${eventId}/invite`, { participantId: p.id }), `Uitnodiging naar ${p.name} wordt verstuurd`)
 
+  const resendDrawn = p => {
+    if (!window.confirm(`Trekkingsmail met de unieke link opnieuw naar ${p.name} (${p.email}) sturen?`)) return
+    act(() => admin.post(`/api/admin/events/${eventId}/participants/${p.id}/send`, { kind: 'drawn' }), `Trekkingsmail naar ${p.name} wordt verstuurd`)
+  }
+
   return (
     <section className="card stack">
       <div className="row row-between wrap">
@@ -382,7 +387,8 @@ function Participants({ eventId, participants, drawn, wishlistEnabled = true, ru
                     <td>{p.invitedAt ? <span title={formatDateTime(p.invitedAt)}>✔︎ {formatDate(p.invitedAt)}</span> : <span className="muted">Nee</span>}</td>
                     {wishlistEnabled && <td>{p.hasWishlist ? '✔︎' : <span className="muted">—</span>}</td>}
                     <td className="actions">
-                      <button className="btn btn-small" disabled={running || !mailConfigured} onClick={() => invite(p)} title="Uitnodiging (opnieuw) versturen">✉️</button>
+                      <button className="btn btn-small" disabled={running || !mailConfigured} onClick={() => invite(p)} title="Uitnodiging met unieke link (opnieuw) versturen">✉️</button>
+                      {drawn && <button className="btn btn-small" disabled={running || !mailConfigured} onClick={() => resendDrawn(p)} title="Trekkingsmail met unieke link opnieuw versturen">🎲✉️</button>}
                       <button className="btn btn-small" onClick={() => startEdit(p)} title="Bewerken">✏️</button>
                       {!drawn && <button className="btn btn-small" onClick={() => remove(p)} title="Verwijderen">🗑️</button>}
                     </td>

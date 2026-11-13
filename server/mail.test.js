@@ -53,6 +53,20 @@ test('esc ontsnapt HTML', () => {
   assert.equal(tpl.esc(null), '')
 })
 
+test('formatBudgetRange en budget met minimum in de uitnodiging', () => {
+  assert.equal(tpl.formatBudgetRange(10, 20), '€ 10,00 tot € 20,00')
+  assert.equal(tpl.formatBudgetRange(15, 15), '€ 15,00')
+  assert.equal(tpl.formatBudgetRange(10, null), 'vanaf € 10,00')
+  assert.equal(tpl.formatBudgetRange(null, 20), '€ 20,00')
+  assert.equal(tpl.formatBudgetRange(null, null), '')
+  const m = tpl.invite({
+    participant: { name: 'Jan' },
+    event: { name: 'Kerst', event_date: '2026-12-18', budget_min: 10, budget: 20 },
+    link: 'http://nas:3004/deelnemer/TOKEN',
+  })
+  assert.match(m.text, /€ 10,00 tot € 20,00/)
+})
+
 test('formatDate en formatBudget', () => {
   assert.equal(tpl.formatDate('2026-12-18'), '18 december 2026')
   assert.equal(tpl.formatDate(''), '')

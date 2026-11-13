@@ -32,9 +32,23 @@ test('parseBudget', () => {
 test('cleanEventInput: geldig event', () => {
   const r = v.cleanEventInput({ name: '  Kerst 2026 ', description: ' Leuk! ', budget: '15', eventDate: '2026-12-18', reminderAt: '2026-12-10T08:00' })
   assert.deepEqual(r.value, {
-    name: 'Kerst 2026', description: 'Leuk!', budget: 15, eventDate: '2026-12-18', reminderAt: '2026-12-10 08:00:00',
+    name: 'Kerst 2026', description: 'Leuk!', budgetMin: null, budgetMax: 15, eventDate: '2026-12-18', reminderAt: '2026-12-10 08:00:00',
     wishlistEnabled: true, messagesEnabled: true,
   })
+})
+
+test('cleanEventInput: minimum- en maximumbudget', () => {
+  const r = v.cleanEventInput({ name: 'x', budgetMin: '10', budgetMax: '20' }).value
+  assert.equal(r.budgetMin, 10)
+  assert.equal(r.budgetMax, 20)
+  const same = v.cleanEventInput({ name: 'x', budgetMin: '15', budgetMax: '15' }).value
+  assert.equal(same.budgetMin, 15)
+  const onlyMin = v.cleanEventInput({ name: 'x', budgetMin: '5' }).value
+  assert.equal(onlyMin.budgetMin, 5)
+  assert.equal(onlyMin.budgetMax, null)
+  assert.match(v.cleanEventInput({ name: 'x', budgetMin: '30', budgetMax: '20' }).error, /minimumbudget/)
+  assert.match(v.cleanEventInput({ name: 'x', budgetMin: 'veel' }).error, /minimumbudget/)
+  assert.match(v.cleanEventInput({ name: 'x', budgetMax: 'veel' }).error, /maximumbudget/)
 })
 
 test('cleanEventInput: foutmeldingen', () => {
@@ -48,7 +62,7 @@ test('cleanEventInput: foutmeldingen', () => {
 test('cleanEventInput: lege optionele velden worden null', () => {
   const r = v.cleanEventInput({ name: 'x' })
   assert.deepEqual(r.value, {
-    name: 'x', description: null, budget: null, eventDate: null, reminderAt: null,
+    name: 'x', description: null, budgetMin: null, budgetMax: null, eventDate: null, reminderAt: null,
     wishlistEnabled: true, messagesEnabled: true,
   })
 })

@@ -7,7 +7,8 @@ Secret Santa-app voor het personeel van VTI Zandhoven.
 - **Deelnemers** krijgen een unieke link per mail (`/deelnemer/<token>`) en kunnen daar hun verlanglijstje invullen, zien wie ze getrokken hebben + diens lijstje, en anoniem berichten sturen naar hun trekking en hun Secret Santa (tabs met "nieuw"-teken; per ongelezen reeks wordt maar één melding gemaild).
 - **Schakelaars per event**: de admin kan het verlanglijstje en de anonieme berichten per event uitzetten. Pagina's, API en mailteksten passen zich aan.
 - **Trekking**: uitsluitingen worden gerespecteerd en er zijn nooit wederkerige koppels (als A B trekt, trekt B nooit A). Daarvoor zijn minstens 3 deelnemers nodig.
-- **Mails** (via Resend): uitnodiging, bevestiging van inschrijving, trekkingsmelding, herinnering (gepland of manueel) en melding bij een nieuw bericht (zonder inhoud).
+- **Mails** (via Resend): uitnodiging, bevestiging van inschrijving, trekkingsmelding, herinnering (gepland of manueel) en melding bij een nieuw bericht (zonder inhoud). Per deelnemer kan de admin de uitnodiging (✉️) en na de trekking de trekkingsmail (🎲✉️) met de unieke link opnieuw versturen.
+- **Budget**: per event een minimum en/of maximum (bv. "€ 10,00 tot € 20,00").
 - **Mailinstellingen** (knop "Mailinstellingen" in het beheer): de admin past de afzender (naam, e-mailadres, antwoordadres) en de teksten van elke mailsoort aan, met live voorbeeld, variabelen (`{{naam}}`, `{{event}}`, `{{datum}}`, `{{budget}}`, `{{link}}`, en `{{wie}}` bij de berichtmelding), "Standaard herstellen" per veld en een testmail naar jezelf.
 
 ## Tech

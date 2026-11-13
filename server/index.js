@@ -84,12 +84,14 @@ function startMailJob(eventId, kind, items) {
 // ── DTO's ──────────────────────────────────────────────────────────
 // Functies staan standaard aan (ook als de kolom ontbreekt of NULL is)
 const flagOn = value => value === undefined || value === null ? true : !!Number(value)
+const money = value => (value === null || value === undefined ? null : Number(value))
 
 const eventDto = e => ({
   id: e.id,
   name: e.name,
   description: e.description,
-  budget: e.budget === null || e.budget === undefined ? null : Number(e.budget),
+  budgetMin: money(e.budget_min),
+  budgetMax: money(e.budget),
   eventDate: e.event_date,
   reminderAt: e.reminder_at ? e.reminder_at.slice(0, 16).replace(' ', 'T') : null,
   reminderSentAt: e.reminder_sent_at,
@@ -204,8 +206,8 @@ function createApp() {
     const { value, error } = v.cleanEventInput(req.body)
     if (error) return res.status(400).json({ error })
     const r = await db.query(
-      'INSERT INTO events (name, description, budget, event_date, reminder_at, wishlist_enabled, messages_enabled) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [value.name, value.description, value.budget, value.eventDate, value.reminderAt, value.wishlistEnabled ? 1 : 0, value.messagesEnabled ? 1 : 0])
+      'INSERT INTO events (name, description, budget_min, budget, event_date, reminder_at, wishlist_enabled, messages_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [value.name, value.description, value.budgetMin, value.budgetMax, value.eventDate, value.reminderAt, value.wishlistEnabled ? 1 : 0, value.messagesEnabled ? 1 : 0])
     res.status(201).json({ id: r.insertId })
   }))
 
@@ -244,10 +246,10 @@ function createApp() {
     const oldReminder = event.reminder_at
     const reminderChanged = (oldReminder || null) !== (value.reminderAt || null)
     await db.query(
-      `UPDATE events SET name = ?, description = ?, budget = ?, event_date = ?, reminder_at = ?,
+      `UPDATE events SET name = ?, description = ?, budget_min = ?, budget = ?, event_date = ?, reminder_at = ?,
               wishlist_enabled = ?, messages_enabled = ?,
               reminder_sent_at = ${reminderChanged ? 'NULL' : 'reminder_sent_at'} WHERE id = ?`,
-      [value.name, value.description, value.budget, value.eventDate, value.reminderAt,
+      [value.name, value.description, value.budgetMin, value.budgetMax, value.eventDate, value.reminderAt,
         value.wishlistEnabled ? 1 : 0, value.messagesEnabled ? 1 : 0, id])
     res.json({ ok: true })
   }))
@@ -409,6 +411,24 @@ function createApp() {
     res.json({ ok: true, total: job.total })
   }))
 
+  // Eén persoon opnieuw mailen: uitnodiging of trekkingsmail (beide bevatten enkel de persoonlijke link, nooit de koppel)
+  app.post('/api/admin/events/:id/participants/:pid/send', admin, h(async (req, res) => {
+    const event = await loadEvent(req, res)
+    if (!event) return
+    const kind = req.body?.kind
+    if (kind !== 'invite' && kind !== 'drawn') return res.status(400).json({ error: 'Onbekend soort mail.' })
+    if (kind === 'drawn' && !event.drawn_at) return res.status(409).json({ error: 'Er is nog niet getrokken.' })
+    if (jobs.get(event.id)?.running) return res.status(409).json({ error: 'Er worden al mails verstuurd voor dit event.' })
+
+    const pid = idParam(req.params.pid)
+    const participant = pid && await db.one('SELECT * FROM participants WHERE id = ? AND event_id = ?', [pid, event.id])
+    if (!participant) return res.status(404).json({ error: 'Deelnemer niet gevonden' })
+
+    const job = startMailJob(event.id, kind, buildMails(kind, event, [participant], baseUrl(req), await getMailSettings()))
+    if (!job) return res.status(409).json({ error: 'Er worden al mails verstuurd voor dit event.' })
+    res.json({ ok: true, total: job.total })
+  }))
+
   app.post('/api/admin/events/:id/draw', admin, h(async (req, res) => {
     const id = idParam(req.params.id)
     if (!id) return res.status(404).json({ error: 'Event niet gevonden' })
@@ -546,7 +566,8 @@ function createApp() {
       event: {
         name: event.name,
         description: event.description,
-        budget: event.budget === null ? null : Number(event.budget),
+        budgetMin: money(event.budget_min),
+        budgetMax: money(event.budget),
         eventDate: event.event_date,
       },
       open: !blocker,
@@ -614,7 +635,8 @@ function createApp() {
     // Altijd dezelfde 404, zodat niemand kan afleiden of een token "bijna" klopt
     if (!tokens.isValidToken(token)) { res.status(404).json({ error: 'Deze link is niet geldig.' }); return null }
     const me = await db.one(
-      `SELECT p.*, e.name AS event_name, e.description AS event_description, e.budget AS event_budget,
+      `SELECT p.*, e.name AS event_name, e.description AS event_description,
+              e.budget AS event_budget, e.budget_min AS event_budget_min,
               e.event_date AS event_date, e.drawn_at AS event_drawn_at,
               e.wishlist_enabled AS event_wishlist_enabled, e.messages_enabled AS event_messages_enabled
          FROM participants p JOIN events e ON e.id = p.event_id WHERE p.token = ?`, [token])
@@ -641,7 +663,8 @@ function createApp() {
       event: {
         name: me.event_name,
         description: me.event_description,
-        budget: me.event_budget === null ? null : Number(me.event_budget),
+        budgetMin: money(me.event_budget_min),
+        budgetMax: money(me.event_budget),
         eventDate: me.event_date,
         drawn: !!me.event_drawn_at,
         wishlistEnabled,
